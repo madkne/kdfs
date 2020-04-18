@@ -1,0 +1,13 @@
+{
+    "Queen":{
+        "macaddress":"",
+        "last_up":"",
+        "perm":"rwx",
+        "version":"0.3",
+        "os":"linux",
+        "arch":""
+    },
+    "PC1":{
+
+    }
+}
