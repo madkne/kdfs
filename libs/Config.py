@@ -20,16 +20,20 @@ class Config:
                     self._items[sp[0].strip()] = sp[1].strip()
             
     # -----------------------------------
-    def getItems(self):
+    def getItems(self) -> dict:
         return self._items
     # -----------------------------------
-    def get(self,key,default=''):
+    def get(self,key,default='') -> str:
         return self._items.get(key,default)
     # -----------------------------------
-    def getInteger(self,key,default=0):
-        return int(self.get(key,default))
+    def getInteger(self,key,default=0) -> int:
+        # print("(debug) ",key,default,self)
+        integer : str = self.get(key,'')
+        if integer == '' or not integer.isdigit():
+            return default
+        return int(integer)
     # -----------------------------------
-    def getBoolean(self,key,default=False):
+    def getBoolean(self,key,default=False) -> bool:
         boolean : str = self.get(key,'')
         if boolean == '': return default
         if boolean.lower() == 'false' : return False

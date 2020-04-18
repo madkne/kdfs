@@ -15,7 +15,7 @@ class baseCommand:
     def _getConfig(self):
         # read kdfs config file
         if self._KDFSConfig is None:
-            self._KDFSConfig = Config('../kdfs.conf')
+            self._KDFSConfig = Config('kdfs.conf')
         return self._KDFSConfig
     # ------------------------------
     # ------------------------------

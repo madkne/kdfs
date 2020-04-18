@@ -1,9 +1,11 @@
 
 from libs.Config import Config
 from server.KDFSQueen import KDFSQueen
+from server.KDFSProtocol import KDFSProtocol
+from commands.identify import identifyCommand
 import socket
 # import thread module 
-from threading import Thread 
+import threading
 from socketserver import ThreadingMixIn 
 
 class KDFSServer:
@@ -14,16 +16,18 @@ class KDFSServer:
     QUEEN : KDFSQueen = None
     MAX_LISTEN = 1
     CLIENT_THREADS = []
+    KDFS_CONFIG : Config = None
     # print_lock = threading.Lock()
     # -------------------------------------------
     def __init__(self,config : Config):
         self.HOST_NAME = '0.0.0.0'
         # print("fffff:",config.index('queen_port',0,len(config)))
         self.PORT_NUMBER = config.getInteger('queen_port',4040)
+        self.KDFS_CONFIG = config
         # check if this node server is queen
         if config.getBoolean('is_queen',False):
             self.IS_QUEEN = True
-            self.QUEEN = KDFSQueen(self.PORT_NUMBER,config.get('nodes_start_ip','192.168.0.0'),config.get('nodes_end_ip','192.168.2.255'))
+            self.QUEEN = KDFSQueen(self.PORT_NUMBER,config.get('nodes_start_ip','192.168.0.0'),config.get('nodes_end_ip','192.168.2.255'),config.getInteger('chunk_size',1024))
             self.MAX_LISTEN = config.getInteger('queen_max_nodes',1)
         # run socket server
         self._runServer()
@@ -48,7 +52,7 @@ class KDFSServer:
                 (clientsocket, (ip,port)) = self.SERVER_SOCKET.accept()
                 print(f"(server) Connection from {ip} has been established.")
 
-                newthread = ClientThread(ip,port,clientsocket) 
+                newthread = ClientThread(ip,port,clientsocket,self.KDFS_CONFIG) 
                 newthread.start() 
                 self.CLIENT_THREADS.append(newthread) 
                 
@@ -66,6 +70,7 @@ class KDFSServer:
         if self.SERVER_SOCKET is not None:
             print("\n(server) KDFS Server is Shutting down...")
             # kill all client threads
+            
             for t in self.CLIENT_THREADS: 
                 t.join()
             # close server connection socket
@@ -74,30 +79,50 @@ class KDFSServer:
     # -------------------------------------------
 
 # **************************************************************
-class ClientThread(Thread): 
+class ClientThread(threading.Thread): 
  
-    def __init__(self,ip:str,port:int,clientsocket:socket.socket): 
-        Thread.__init__(self) 
+    def __init__(self,ip:str,port:int,clientsocket:socket.socket,config:Config): 
+        # Thread.__init__(self) 
+        super(ClientThread, self).__init__()
+        self._stop_event = threading.Event() 
         self.ip = ip 
         self.port = port 
         self.socket = clientsocket
+        self.config = config
         print(f"(server) New server socket thread started for {ip}")
- 
+    # -----------------------------------
     def run(self): 
+        # print("(debug) run client ...")
         while True:
             try:
-                if not self.socket: break
-                data = self.socket.recv(1024).decode('utf-8')
-                print('Request received : {}'.format(data))
-                if data :
-                    self.socket.send('hello back!'.encode('utf-8'))
-                else:
-                    print("not data...")
+                # if not self.socket: break
+                #=>get a command with parameters as json
+                chunk_size = self.config.getInteger('chunk_size',1024)
+                command = KDFSProtocol.receiveMessage(self.socket,chunk_size)
+                # check for empty command
+                if command == '':
+                    print("(server) No command received. shutting down socket...")
                     self.socket.close()
+                    break
+                print('(server) Command Request received : {}'.format(command['command']))
+                # get command response as json
+                response = self.getCommandResponse(command['command'])
+                # send response of command
+                KDFSProtocol.sendMessage(self.socket,chunk_size,response)
                 
             except Exception as e:
                 print("connection closed by client.",e)
+                raise
                 break
-                # socket.close(1)
-                # break
-                # raise
+    # -----------------------------------
+    def getCommandResponse(self,command : str):
+        # identify command
+        if command == 'identify':
+            return identifyCommand().response()
+
+    # -----------------------------------
+    def stop(self):
+        self._stop_event.set()
+    # -----------------------------------
+    def stopped(self):
+        return self._stop_event.is_set()

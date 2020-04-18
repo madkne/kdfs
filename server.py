@@ -1,10 +1,13 @@
 
 
-import sys, time
+
 from libs.Daemon import Daemon
 from libs.Config import Config
-# from configparser import ConfigParser
 from server.KDFSServer import KDFSServer
+from commands.identify import identifyCommand
+
+import sys, time
+import json
 import signal
 import sys
  
@@ -12,13 +15,17 @@ KDFS_SERVER = None
 # ------------------------------------------------
 class KDFSDaemon(Daemon):
         def run(self):
-            # read kdfs config file
-            KDFSConfig = Config('kdfs.conf')
-            # KDFSConfig.read("kdfs.conf")
-            print("KDFS SERVER (version {})".format(KDFSConfig.get('version','unknown')))
-            # print(KDFSConfig.getItems())
-            # run kdfs server'
-            server = KDFSServer(KDFSConfig)
+                # read kdfs config file
+                KDFSConfig = Config('kdfs.conf')
+                # KDFSConfig.read("kdfs.conf")
+                print("KDFS SERVER (version {})".format(KDFSConfig.get('version','unknown')))
+                # get kdfs server info
+                info = json.loads(identifyCommand().response())
+                print("MAC Address: {} on {}({})".format(info['macaddr'],info['os'],info['arch']))
+                print("\n")
+                # print(KDFSConfig.getItems())
+                # run kdfs server'
+                server = KDFSServer(KDFSConfig)
             
  
 # def signal_handler(signal, frame):
