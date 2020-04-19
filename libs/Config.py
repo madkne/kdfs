@@ -3,10 +3,13 @@ import os.path
 
 class Config:
     _items : dict = {}
+    _path : str = ''
+    # -----------------------------------
     def __init__(self,path : str):
         # print(os.path.abspath(path))
+        self._path = os.path.abspath(path)
         # read config file and parse it
-        with open(os.path.abspath(path),'r',encoding='utf-8') as f:
+        with open(self._path,'r',encoding='utf-8') as f:
             for line in f.readlines():
                 # print('line:',line)
                 line = line.strip()
@@ -38,3 +41,10 @@ class Config:
         if boolean == '': return default
         if boolean.lower() == 'false' : return False
         return True
+    # -----------------------------------
+    def updateItem(self,key,value:str):
+        self._items[key] = value
+        # write to config file
+        with open(self._path,'w',encoding='utf-8') as f:
+            for key,val in self._items.items():
+                f.write("{} = {}\n\n".format(key,val))

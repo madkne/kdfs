@@ -17,6 +17,8 @@ class KDFSProtocol:
     # -------------------------------------------------
     @staticmethod
     def receiveMessage(socketi : socket.socket,chunk_size : int,is_file=False) -> dict:
+        # check for socket not valid
+        if socketi == None: return
         message : dict = {}
         data = b''
         line = b''
@@ -60,7 +62,7 @@ class KDFSProtocol:
             if msg_end != -1:
                 break
 
-            if counter > 30: break
+            # if counter > 30: break
         
         # print('(protocol) data resv:',data)
         # return empty, if data is empty
@@ -69,6 +71,8 @@ class KDFSProtocol:
         # if not file, then decode it
         if not is_file:
             message = json.loads(data.decode(KDFSProtocol.ENCODING))
+            if type(message) is str:
+                message = json.loads(message)
         # else:
         #     message
         # TODO:
@@ -77,15 +81,36 @@ class KDFSProtocol:
         return message
     # -------------------------------------------------
     @staticmethod
-    def sendCommandFormatter(command : str) -> str:
+    def sendCommandFormatter(command : str,params:dict={},send_queen=False) -> str:
         message : dict = {
-            'command' : command
+            'command'   : command,
+            'params'    : params,
+            'send_by'   : 'queen' if send_queen else 'client'
+        }
+
+        return json.dumps(message)
+    # -------------------------------------------------
+    @staticmethod
+    def sendResponseFormatter(response,errors:list=[],meta:dict={}) -> str:
+        # trim errors
+        tmp_errors = []
+        for error in errors:
+            if len(error) != 0:
+                tmp_errors.append(error)
+        errors = tmp_errors
+
+        message : dict = {
+            'data'   : response,
+            'errors' : errors,
+            'meta'   : meta
         }
 
         return json.dumps(message)
     # -------------------------------------------------
     @staticmethod
     def sendMessage(socketi : socket.socket,chunk_size : int,data : str,is_file=False):
+        # check for socket not valid
+        if socketi == None: return
         # decode data by encoding, if not file!
         if not is_file:
             data = data.encode(KDFSProtocol.ENCODING)

@@ -1,7 +1,7 @@
 
 from commands.base import baseCommand
-# from getmac import get_mac_address as gma
-import uuid
+from server.ServerUtils import ServerUtils
+
 import os
 import platform
 
@@ -11,17 +11,16 @@ class identifyCommand(baseCommand):
     # ------------------------------
     def response(self):
         res : dict = {
-            'macaddr' : self._getMacAddress(),
+            'macaddr' : ServerUtils.getMacAddress(),
             'version' : self._getConfig().getInteger('version'),
             'os'      : platform.system(),
-            'arch'    : platform.machine()
+            'arch'    : platform.machine(),
+            'hostname': platform.node(),
+            'node_type': 'queen' if self._getConfig().getBoolean('is_queen',False) else 'node'
         }
-        return super().response(res)
+        return super().response(res,[],True)
     # ------------------------------
-    def _getMacAddress(self):
-        macaddr = ':'.join(['{:02x}'.format((uuid.getnode() >> ele) & 0xff) 
-for ele in range(0,8*6,8)][::-1])
-        return macaddr
+    
     # ------------------------------
     # ------------------------------
     # ------------------------------

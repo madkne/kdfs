@@ -21,7 +21,10 @@ class KDFSDaemon(Daemon):
                 print("KDFS SERVER (version {})".format(KDFSConfig.get('version','unknown')))
                 # get kdfs server info
                 info = json.loads(identifyCommand().response())
-                print("MAC Address: {} on {}({})".format(info['macaddr'],info['os'],info['arch']))
+                print("MAC Address is {} on {}({})".format(info['macaddr'],info['os'],info['arch']))
+                # check if server is queen
+                if KDFSConfig.getBoolean('is_queen',False):
+                        print("*** THIS SERVER RUN AS QUEEN ***")
                 print("\n")
                 # print(KDFSConfig.getItems())
                 # run kdfs server'

@@ -15,8 +15,12 @@
 - [x] send identify response to queen
 - [x] verify nodes of kdfs
 - [x] update nodes
-- [ ] create kdfs client
-- [ ] complete 'list' command for clients
+- [x] create kdfs client
+- [x] check for listenning kdfs server on client
+- [x] update state of nodes (on/off)
+- [x] return list of all nodes if path is empty for list command
+- [x] formatting table mode response in client
+- [x] complete 'list' command for clients
 - [ ] check permissions of clients
 - [ ] start 'upgrade' command for servers
 - [ ] add logos system to servers
@@ -25,3 +29,7 @@
 ## Bugs
 
 - [ ] check client servers if queen_port is blocked by firewall
+- [ ] check for unique queen on kdfs system
+- [ ] check for ports not already used
+- [x] validate old ip addresses of nodes by queen
+- [x] save and restore queen_ip in config
