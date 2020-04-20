@@ -11,7 +11,7 @@ class baseCommand:
     _KDFSConfig : Config = None
     _CommandParams : dict = {}
     _CommandParamsNames : list = []
-    _CommandResponseType = 'array'
+    _CommandResponseType = 'text' #array,table
     # ------------------------------
     def __init__(self,commandName:str,params:list=[]):
         # map params by command params names
@@ -32,7 +32,7 @@ class baseCommand:
     def _getConfig(self):
         # read kdfs config file
         if self._KDFSConfig is None:
-            self._KDFSConfig = Config('kdfs.conf')
+            self._KDFSConfig = Config(ServerUtils.CONFIG_PATH)
         return self._KDFSConfig
     # ------------------------------
     def _getActiveNodes(self):
@@ -75,7 +75,9 @@ class baseCommand:
         chunk_size = config.getInteger('chunk_size',1024)
         # iterate all selected nodes
         for IP in nodesIPs:
-            print("(command) sending \"{}\" command by \"{}\" param(s) to {} node IP...".format(command,','.join(params),IP))
+            # get node name by IP
+            nodeName = ServerUtils.findNodeByIP(IP)
+            print("(command) sending \"{}\" command by \"{}\" param(s) to \"{}\" node ...".format(command,','.join(params),nodeName))
             socketi = ServerUtils.socketConnect(IP,port)
             try:
                 # send list command with relative path
@@ -83,8 +85,6 @@ class baseCommand:
                 # get response of command, if exist!
                 response = KDFSProtocol.receiveMessage(socketi,chunk_size)
                 # print('(debug) node list response:',response)
-                # get node name by IP
-                nodeName = ServerUtils.findNodeByIP(IP)
                 # append response to final by node name
                 finalResponse[nodeName] = response
 

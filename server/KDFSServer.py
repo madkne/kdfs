@@ -1,18 +1,15 @@
 
 from libs.Config import Config
-from server.KDFSQueen import KDFSQueen
 from server.KDFSProtocol import KDFSProtocol
-from commands.identify import identifyCommand
-from commands.list import listCommand
 from server.ServerUtils import ServerUtils
-from commands.minimal import MinimalCommands
+from server.ClientThread import ClientThread
 
 # import thread module 
 import socket
 import multiprocessing
 import threading
 import json
-from socketserver import ThreadingMixIn 
+# from socketserver import ThreadingMixIn 
 
 class KDFSServer:
     HOST_NAME : str
@@ -23,7 +20,8 @@ class KDFSServer:
     CLIENT_SOCKET : socket.socket = None
     IS_QUEEN = False
     QUEEN_IP = ''
-    QUEEN : KDFSQueen = None
+    CLIENT_IP = ''
+    QUEEN = None
     MAX_LISTEN = 1
     CLIENT_THREADS = []
     KDFS_CONFIG : Config = None
@@ -41,11 +39,18 @@ class KDFSServer:
         self.KDFS_START_IP = config.get('nodes_start_ip','192.168.0.0')
         self.KDFS_END_IP = config.get('nodes_end_ip','192.168.5.255')
         self.CHUNK_SIZE = config.getInteger('chunk_size',1024)
+        # get client ip address
+        self.CLIENT_IP = self.KDFS_CONFIG.get('client_ip','127.0.0.1')
         # check if this node server is queen
         if config.getBoolean('is_queen',False):
+            from server.KDFSQueen import KDFSQueen
             self.IS_QUEEN = True
-            self.QUEEN = KDFSQueen(self.SERVER_PORT,self.KDFS_START_IP,self.KDFS_END_IP,config.getInteger('chunk_size',1024))
+            self.QUEEN = KDFSQueen(config)
             self.MAX_LISTEN = config.getInteger('queen_max_nodes',1)
+        # check for ports is already use
+        if ServerUtils.checkPortInUse(self.CLIENT_PORT,self.CLIENT_IP) or ServerUtils.checkPortInUse(self.SERVER_PORT,self.HOST_NAME):
+            print("(KDFS) One of \"{} on {}\" or \"{} on {}\" ports are already use!".format(self.SERVER_PORT,self.HOST_NAME, self.CLIENT_PORT,self.CLIENT_IP))
+            return  
         # run local socket client in another thread!
         # self.LOCALSERVERTHREAD = threading.Thread(target=self._runLocalServer)
         self.LOCALSERVERTHREAD = multiprocessing.Process(target=self._runLocalServer)
@@ -54,23 +59,20 @@ class KDFSServer:
         self._runGlobalServer()
     # -------------------------------------------
     def _runLocalServer(self):
-        # get client ip address
-        client_ip = self.KDFS_CONFIG.get('client_ip','127.0.0.1')
         # create a socket object
         if self.CLIENT_SOCKET is None:
             # AF_INET == ipv4
             # SOCK_STREAM == TCP
-            self.CLIENT_SOCKET = socket.socket(socket.AF_INET, socket.SOCK_STREAM)   
-        # check for port is already use
-        # print('(debug) is use:',ServerUtils.checkPortInUse(self.CLIENT_PORT,client_ip))
-        if ServerUtils.checkPortInUse(self.CLIENT_PORT,client_ip):
-            print("(client) Port {} on {} is already use!".format(client_ip, self.CLIENT_PORT))
-            return                              
+            self.CLIENT_SOCKET = socket.socket(socket.AF_INET, socket.SOCK_STREAM)                               
         # bind to the port
-        self.CLIENT_SOCKET.bind((client_ip, self.CLIENT_PORT))  
-        self.CLIENT_SOCKET.listen(1)
+        try:
+            self.CLIENT_SOCKET.bind((self.CLIENT_IP, self.CLIENT_PORT))  
+            self.CLIENT_SOCKET.listen(1)
+        except:
+            print("(client) Can not bind local server on {} port".format(self.CLIENT_PORT))
+            return
         # self.SERVER_SOCKET.settimeout(1000)    
-        print("(client) KDFS Client Socket listenning on {}:{}".format(client_ip,self.CLIENT_PORT))
+        print("(client) KDFS Client Socket listenning on {}:{}".format(self.CLIENT_IP,self.CLIENT_PORT))
         # listen on any request
         while True:
             try:
@@ -134,14 +136,14 @@ class KDFSServer:
         if self.SERVER_SOCKET is None:
             # AF_INET == ipv4
             # SOCK_STREAM == TCP
-            self.SERVER_SOCKET = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
-        # check for port is already use
-        if ServerUtils.checkPortInUse(self.CLIENT_PORT,self.HOST_NAME):
-            print("(server) Port {} on {} is already use!".format(self.HOST_NAME, self.CLIENT_PORT))
-            return                               
+            self.SERVER_SOCKET = socket.socket(socket.AF_INET, socket.SOCK_STREAM)                               
         # bind to the port
-        self.SERVER_SOCKET.bind((self.HOST_NAME, self.SERVER_PORT))  
-        self.SERVER_SOCKET.listen(self.MAX_LISTEN)
+        try:
+            self.SERVER_SOCKET.bind((self.HOST_NAME, self.SERVER_PORT))  
+            self.SERVER_SOCKET.listen(self.MAX_LISTEN)
+        except:
+            print("(server) Can not bind server on {} port".format(self.SERVER_PORT))
+            return
         # self.SERVER_SOCKET.settimeout(1000)    
         print("(server) KDFS Server Socket listenning on {}:{}".format(self.HOST_NAME,self.SERVER_PORT))
         # listen on any request
@@ -167,18 +169,27 @@ class KDFSServer:
 
     # -------------------------------------------
     def terminate(self):
+        print()
+        # terminate client socket
+        if self.CLIENT_SOCKET is not None:
+            # self.CLIENT_SOCKET.close()
+            self.CLIENT_SOCKET.shutdown()
+        self.LOCALSERVERTHREAD.kill()
+        print("(client) KDFS Local Server Shutted down.")
+        # terminate server socket
         if self.SERVER_SOCKET is not None:
-            print("\n(server) KDFS Server is Shutting down...")
+            print("(server) KDFS Server is Shutting down...")
             # kill all client threads
-            for t in self.CLIENT_THREADS: 
-                t.join()
-            # kill client server
-            if self.CLIENT_SOCKET is not None:
-                self.CLIENT_SOCKET.close() 
-            self.LOCALSERVERTHREAD.kill()
+            try:
+                for t in self.CLIENT_THREADS: 
+                    t.join()
+            except:
+                pass
             # close server connection socket
             self.SERVER_SOCKET.close()  
             self.SERVER_SOCKET = None  
+            # exit system
+            exit(0)
     # -------------------------------------------
     def findQueenIP(self):
         # if queen ip is exist, ignore!
@@ -207,72 +218,4 @@ class KDFSServer:
         self.KDFS_CONFIG.updateItem('queen_ip',self.QUEEN_IP)
 
     # -------------------------------------------
-# **************************************************************
-class ClientThread(threading.Thread): 
- 
-    def __init__(self,ip:str,port:int,clientsocket:socket.socket,config:Config): 
-        # Thread.__init__(self) 
-        super(ClientThread, self).__init__()
-        self._stop_event = threading.Event() 
-        self.ip = ip 
-        self.port = port 
-        self.socket = clientsocket
-        self.config = config
-        print(f"(server) New server socket thread started for {ip}")
-    # -----------------------------------
-    def run(self): 
-        # print("(debug) run client ...")
-        while True:
-            try:
-                if not self.socket: break
-                #=>get a command with parameters as json
-                chunk_size = self.config.getInteger('chunk_size',1024)
-                command = KDFSProtocol.receiveMessage(self.socket,chunk_size)
-                # check for empty command
-                if command == '':
-                    print("(server) No command received. shutting down socket...")
-                    self.socket.close()
-                    break
-                print('(server) Command Request received : {}'.format(command['command']))
-                response = ''
-                # get queen command response as json
-                if command['send_by'] == 'queen':
-                    response = self.getQueenCommandResponse(command['command'],command['params'])
-                # get client command response as json (for queen!)
-                elif self.config.getBoolean('is_queen',False):
-                    response = self.getClientCommandResponse(command['command'],command['params'])
-                # send response of command
-                KDFSProtocol.sendMessage(self.socket,chunk_size,response)
-                print("(server) Send response for {} node".format(command['send_by']))
-                
-            except Exception as e:
-                print("(server) connection closed by client.(1)",e)
-                print("(debug) response:",response)
-                raise
-                break
-    # -----------------------------------
-    def getClientCommandResponse(self,command : str,params:list=[]):
-        # list command
-        if command == 'list':
-            return listCommand(params).response()
-    # -----------------------------------
-    def getQueenCommandResponse(self,command:str,params:dict={}):
-        response = ''
-        error = ''
-        # identify command
-        if command == 'identify':
-            response = MinimalCommands.identifyCommand()
-        # list command
-        elif command == 'list':
-            response = MinimalCommands.listCommand(params['path'],self.config.get('storage','/'))
-            if type(response) is not list:
-                error = response
-                response = []
 
-        return json.dumps(KDFSProtocol.sendResponseFormatter(response,[error]))
-    # -----------------------------------
-    def stop(self):
-        self._stop_event.set()
-    # -----------------------------------
-    def stopped(self):
-        return self._stop_event.is_set()

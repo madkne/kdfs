@@ -1,12 +1,17 @@
 # from commands.identify import identifyCommand
 from server.KDFSProtocol import KDFSProtocol
+from libs.Config import Config
 
 import socket
 import json
 import uuid
+import os
+import subprocess
 
 class ServerUtils:
     GLOBAL_NODES_PATH = 'database/nodes.json'
+    UPGRADE_ZIP_PATH = "./upgrades/kdfs-node-{}.tar.gz"
+    CONFIG_PATH = './kdfs.conf'
     # ----------------------------------
     @staticmethod
     def socketConnect(host:str,port:int,timeout=1):
@@ -49,6 +54,28 @@ for ele in range(0,8*6,8)][::-1])
         return macaddr
     # ----------------------------------
     @staticmethod
+    def updateConfig(key:str,value):
+        # convert value to string, if not
+        if type(value) is int:
+            value = str(value)
+        elif type(value) is bool:
+            if value: value = 'true'
+            else : value = 'false'
+        elif type(value) is not str:
+            value = str(value)
+        # open kdfs config file
+        config = Config(ServerUtils.CONFIG_PATH)
+        # update kdfs config file
+        config.updateItem(key,value)
+    # ----------------------------------
+    @staticmethod
+    def runShellFile(path:str):
+        script = b''
+        with open(os.path.abspath(path), 'rb') as f:
+            script = f.read()
+        rc = subprocess.call(script, shell=True)
+    # ----------------------------------
+    @staticmethod
     def getAllOldNodeIPs(exclude_this_node=True):
         NodesIPs = []
         ThisMacAddress = ServerUtils.getMacAddress()
@@ -64,15 +91,16 @@ for ele in range(0,8*6,8)][::-1])
     # ----------------------------------
     @staticmethod
     def getAllNodes(just_on=True):
-        nodes = {}
+        finalNodes = {}
         # open nodes.json
         nodes : dict = json.load(open(ServerUtils.GLOBAL_NODES_PATH,'r'))
         for key,vals in nodes.items():
-            # check if node state is on
-            if just_on and vals['state'] == 'off':
+            # check if node state is off
+            if just_on and vals['state'] != 'on':
                 continue
-            nodes[key] = vals
-        return nodes
+            finalNodes[key] = vals
+        # print("(debug) nodes:",finalNodes)
+        return finalNodes
     # ----------------------------------
     @staticmethod
     def getIPAddressesPool(start_ip:str,end_ip:str):

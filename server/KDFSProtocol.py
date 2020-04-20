@@ -2,6 +2,7 @@
 import socket
 import json
 import math
+import gzip
 
 class KDFSProtocol:
     END_CHUNK = b'\r!\n'
@@ -16,10 +17,10 @@ class KDFSProtocol:
         return chunk_size
     # -------------------------------------------------
     @staticmethod
-    def receiveMessage(socketi : socket.socket,chunk_size : int,is_file=False) -> dict:
+    def receiveMessage(socketi : socket.socket,chunk_size : int,is_file=False,is_binary=False):
         # check for socket not valid
         if socketi == None: return
-        message : dict = {}
+        message = None
         data = b''
         line = b''
         extra = b''
@@ -28,38 +29,42 @@ class KDFSProtocol:
         chunk_size = KDFSProtocol.checkChunkSize(chunk_size)
         # iterate on socket to get complete data
         while True:
-            counter += 1
-            chunk = socketi.recv(chunk_size)
-            chunk_extra = extra + chunk
-            line_end = chunk_extra.find(KDFSProtocol.END_CHUNK)
-            # check for empty chunk
-            if len(chunk_extra) == 0:
-                break 
-            # get line of chunk, if exist
-            if line_end != -1:
-                # find all end lines of chunk
-                line_end = 0
-                while True:
-                    before_line_end = line_end
-                    start_ind = line_end + len(KDFSProtocol.END_CHUNK) if line_end>0 else 0
-                    line_end = chunk_extra.find(KDFSProtocol.END_CHUNK,start_ind)
-                    if line_end == -1 :
-                        line_end = before_line_end
-                        break
-                    line = line + chunk_extra[start_ind:line_end]
-                    data += line
-                    line = b''
-                # get extra bytes of chunk for appending to next chunk
-                extra = chunk_extra[line_end+len(KDFSProtocol.END_CHUNK):]
-            # if line not completed, wait!
-            else:
-                line += chunk_extra
-                extra = b''
-            # print("(debug) chunk:{}\nchunk_extra:{} (extra:{})\nline:{} (line_end:{},chunk_size:{})\ndata:{}\n----------------".format(chunk,chunk_extra,extra,line,line_end,chunk_size,data))
-            # check for end of message
-            msg_end = chunk_extra.find(KDFSProtocol.END_MESSAGE)
-            # if message end, then break
-            if msg_end != -1:
+            try:
+                counter += 1
+                chunk = socketi.recv(chunk_size)
+                chunk_extra = extra + chunk
+                line_end = chunk_extra.find(KDFSProtocol.END_CHUNK)
+                # check for empty chunk
+                if len(chunk_extra) == 0:
+                    break 
+                # get line of chunk, if exist
+                if line_end != -1:
+                    # find all end lines of chunk
+                    line_end = 0
+                    while True:
+                        before_line_end = line_end
+                        start_ind = line_end + len(KDFSProtocol.END_CHUNK) if line_end>0 else 0
+                        line_end = chunk_extra.find(KDFSProtocol.END_CHUNK,start_ind)
+                        if line_end == -1 :
+                            line_end = before_line_end
+                            break
+                        line = line + chunk_extra[start_ind:line_end]
+                        data += line
+                        line = b''
+                    # get extra bytes of chunk for appending to next chunk
+                    extra = chunk_extra[line_end+len(KDFSProtocol.END_CHUNK):]
+                # if line not completed, wait!
+                else:
+                    line += chunk_extra
+                    extra = b''
+                # print("(debug) chunk:{}\nchunk_extra:{} (extra:{})\nline:{} (line_end:{},chunk_size:{})\ndata:{}\n----------------".format(chunk,chunk_extra,extra,line,line_end,chunk_size,data))
+                # check for end of message
+                msg_end = chunk_extra.find(KDFSProtocol.END_MESSAGE)
+                # if message end, then break
+                if msg_end != -1:
+                    break
+            except Exception as e:
+                print("(protocol) raise an exception when receiving message:",e)
                 break
 
             # if counter > 30: break
@@ -67,25 +72,30 @@ class KDFSProtocol:
         # print('(protocol) data resv:',data)
         # return empty, if data is empty
         if len(data) == 0:
-            return ''
+            return None
         # if not file, then decode it
         if not is_file:
             message = json.loads(data.decode(KDFSProtocol.ENCODING))
             if type(message) is str:
                 message = json.loads(message)
-        # else:
-        #     message
-        # TODO:
+        else:
+            if is_binary:
+                message = data
+            else:    
+                #=>decompress content
+                message = gzip.decompress(data).decode(KDFSProtocol.ENCODING)
         
 
         return message
     # -------------------------------------------------
     @staticmethod
-    def sendCommandFormatter(command : str,params:dict={},send_queen=False) -> str:
+    def sendCommandFormatter(command : str,params:dict={},send_queen=False,send_file=False,send_binary=False) -> str:
         message : dict = {
             'command'   : command,
             'params'    : params,
-            'send_by'   : 'queen' if send_queen else 'client'
+            'send_by'   : 'queen' if send_queen else 'client',
+            'send_file' : send_file,
+            'send_binary': send_binary
         }
 
         return json.dumps(message)
@@ -108,12 +118,15 @@ class KDFSProtocol:
         return json.dumps(message)
     # -------------------------------------------------
     @staticmethod
-    def sendMessage(socketi : socket.socket,chunk_size : int,data : str,is_file=False):
+    def sendMessage(socketi : socket.socket,chunk_size : int,data,is_file=False,is_binary=False):
         # check for socket not valid
         if socketi == None: return
         # decode data by encoding, if not file!
         if not is_file:
             data = data.encode(KDFSProtocol.ENCODING)
+        elif not is_binary:
+            #=> compress content by gzip
+            data = gzip.compress(bytes(data,KDFSProtocol.ENCODING))
         # check for chunk size
         chunk_size = KDFSProtocol.checkChunkSize(chunk_size)
         #=>calc data chunks count

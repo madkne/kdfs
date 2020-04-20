@@ -4,7 +4,8 @@
 from libs.Daemon import Daemon
 from libs.Config import Config
 from server.KDFSServer import KDFSServer
-from commands.identify import identifyCommand
+from commands.minimal import MinimalCommands
+from server.ServerUtils import ServerUtils
 
 import sys, time
 import json
@@ -14,13 +15,12 @@ import sys
 KDFS_SERVER = None
 # ------------------------------------------------
 class KDFSDaemon(Daemon):
-        def run(self):
+        def run(self,argvs):
                 # read kdfs config file
-                KDFSConfig = Config('kdfs.conf')
-                # KDFSConfig.read("kdfs.conf")
-                print("KDFS SERVER (version {})".format(KDFSConfig.get('version','unknown')))
+                KDFSConfig = Config(ServerUtils.CONFIG_PATH)
+                print("\r\nKDFS SERVER (version {})".format(KDFSConfig.get('version','unknown')))
                 # get kdfs server info
-                info = json.loads(identifyCommand().response())
+                info = MinimalCommands.identifyCommand()
                 print("MAC Address is {} on {}({})".format(info['macaddr'],info['os'],info['arch']))
                 # check if server is queen
                 if KDFSConfig.getBoolean('is_queen',False):
@@ -41,7 +41,7 @@ if __name__ == "__main__":
         daemon = KDFSDaemon('/tmp/kdfs-daemon.pid')
         if len(sys.argv) == 2:
                 if 'start' == sys.argv[1]:
-                        daemon.start()
+                        daemon.start(sys.argv[2:])
                 elif 'stop' == sys.argv[1]:
                         daemon.stop()
                 elif 'restart' == sys.argv[1]:

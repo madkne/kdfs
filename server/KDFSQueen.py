@@ -1,18 +1,26 @@
 
 from server.KDFSProtocol import KDFSProtocol
 from server.ServerUtils import ServerUtils
+from libs.Config import Config
 
 import json
+import os
 import socket
 from time import gmtime, strftime
+import tarfile
+import gzip
 
 class KDFSQueen:
     GLOBAL_PORT = 4040
     GLOBAL_CHUNK_SIZE = 1024
+    GLOBAL_CONFIG : Config 
     # ----------------------------------
-    def __init__(self,port,start_ip:str,end_ip:str,chunk_size=1024):
-        self.GLOBAL_PORT = port
-        self.GLOBAL_CHUNK_SIZE = chunk_size
+    def __init__(self,config:Config):
+        self.GLOBAL_PORT = config.getInteger('queen_port',4040)
+        self.GLOBAL_CHUNK_SIZE = config.getInteger('chunk_size',1024)
+        start_ip = config.get('nodes_start_ip','192.168.0.0')
+        end_ip = config.get('nodes_end_ip','192.168.5.255')
+        self.GLOBAL_CONFIG = config
         # scan all up hosts and validate kdfs node
         self.scanNodes(start_ip,end_ip)
 
@@ -69,6 +77,9 @@ class KDFSQueen:
                     'hostname'      : response['hostname']
                 })
                 state = 'detect'
+                # check for upgrading node
+                if int(response['version']) < self.GLOBAL_CONFIG.getInteger('version',1):
+                    self.upgradeNodeServer(nodeName,IP)
             else:
                 print("UNDEFINED")
 
@@ -83,6 +94,76 @@ class KDFSQueen:
                 socketi.close()
         # return state of node
         return state
+
+    # ----------------------------------
+    def upgradeNodeServer(self,name:str,ip:str):
+        version = self.GLOBAL_CONFIG.getInteger('version',1)
+        zip_path = ServerUtils.UPGRADE_ZIP_PATH.format(version)
+        print("(queen) Upgrading \"{}\" node to verison {}...".format(name,version))
+        # create zip file of all files to need upgrade, if not exist!
+        if not os.path.exists(zip_path):
+            # list of files that must upgrade for any node
+            files = [
+                "server/__init__.py",
+                "server/KDFSProtocol.py",
+                "server/KDFSServer.py",
+                "server/ServerUtils.py",
+                "server/ClientThread.py",
+                "kdfs.py",
+                "kdfs.conf.sample",
+                "server.py",
+                "libs/__init__.py",
+                "libs/Config.py",
+                "libs/Daemon.py",
+                "libs/tabulate.py",
+                "libs/Notification.py",
+                "commands/__init__.py",
+                "commands/minimal.py",
+                "upgrade.sh"
+            ]
+            with tarfile.open(zip_path, 'w:gz') as kdfsTar:
+                for f in files:   
+                    kdfsTar.add(f)
+
+        # connect to node and send upgrade file for it
+        socketi = ServerUtils.socketConnect(ip,self.GLOBAL_PORT,60)
+        try:
+            # send upgrade command
+            KDFSProtocol.sendMessage(socketi,self.GLOBAL_CHUNK_SIZE,KDFSProtocol.sendCommandFormatter('upgrade',{'version':version},True,True,True))
+            # get response of command, if exist!
+            response = KDFSProtocol.receiveMessage(socketi,self.GLOBAL_CHUNK_SIZE)['data']
+            # if response not 'yes', then failed upgrading!
+            if response != 'yes':
+                print("(queen) Failed upgrading by node server:",response)
+                return False
+            # print('(debug) node upgrade:',response,len(response))
+            # read new kdfs zip file
+            filecontent = b''
+            with open(zip_path, mode='rb') as f:
+                filecontent = f.read()
+            # send new kdfs zip file to node 
+            # print("(debug) filcontent:",filecontent)
+            KDFSProtocol.sendMessage(socketi,self.GLOBAL_CHUNK_SIZE,filecontent,True,True)
+            # get response for success upgrading or failed!
+            response = KDFSProtocol.receiveMessage(socketi,self.GLOBAL_CHUNK_SIZE)['data']
+
+            if response == 'success':
+                print("(queen) Success upgrading of \"{}\" node server! Reconnect later (about 3 sec later)".format(name))
+            else:
+                print("(queen) Seems that Failed upgrading of \"{}\" node server (response:{}".format(name,response))
+
+            # close connection
+            socketi.close()
+
+
+        except (Exception,KeyboardInterrupt) as e:
+            print("(queen) Failed upgrading by Exception:",e)
+            return False
+            # raise
+        finally:
+            # close socket 
+            if socketi is not None:
+                socketi.close()
 
 
     

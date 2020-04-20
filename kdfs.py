@@ -1,6 +1,7 @@
 
 #*****************************************
 from libs.Config import Config
+from libs.tabulate import tabulate
 from server.KDFSProtocol import KDFSProtocol
 from server.ServerUtils import ServerUtils
 
@@ -12,17 +13,21 @@ import math
 import socket
 import time
 import platform
-from tabulate import tabulate
 # ------------------------------------------------
 KDFSConfig : Config
 # ------------------------------------------------
 def help():
     print("Welcome to Kimia Kimia Distributed File System {}!  This is the help utility.".format(KDFSConfig.get('version','unknown')))
-    print(
-        "- list [path]\
-        \nreturn list of directories and files in [path]\
+    print("\
+        - list [path]\
+        \nreturn list of directories and files in [path] (perm:r)\
         \n\t> list\
         \n\t> list pc1://home\
+        ---------------------------\n\
+        - info [mode=file] [path]\
+        \nreturn info of file in [path] (perm:r+)\
+        \n\t> info file pc1://hello.md\
+        ---------------------------\n\
         ")
 # ------------------------------------------------
 def displayResponseAsTable(response: list):
@@ -48,7 +53,7 @@ currentMilliseconds = lambda: int(round(time.time() * 1000))
 # when start kdfs client program
 if __name__ == "__main__":
     # read kdfs config file
-    KDFSConfig = Config('kdfs.conf')
+    KDFSConfig = Config(ServerUtils.CONFIG_PATH)
     # KDFSConfig.read("kdfs.conf")
     print("KDFS CLIENT shell (version {})".format(KDFSConfig.get('version','unknown')))
     print("Using \"help\" for more information.")

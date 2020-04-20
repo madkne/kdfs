@@ -17,12 +17,14 @@ nodes_start_ip = 192.168.1.68
 nodes_end_ip = 192.168.1.171
 # chunk size (bytes) for tansmit data
 chunk_size = 1024
+# if server can accept any upgrades from queen server or not!
+accept_upgrades = true
 
 # ---- DONT'T CHANGE ----
 [info]
 client_ip = 127.0.0.1
 # version number of kdfs
-# version 0.54
-version = 54
+# version 0.90
+version = 90
 
 programmer = madkne

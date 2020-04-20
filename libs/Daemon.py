@@ -58,7 +58,7 @@ class Daemon:
 	def delpid(self):
 		os.remove(self.pidfile)
 
-	def start(self):
+	def start(self,argvs=None):
 		"""Start the daemon."""
 
 		# Check for a pidfile to see if the daemon already runs
@@ -77,7 +77,7 @@ class Daemon:
 		
 		# Start the daemon
 		# self.daemonize()
-		self.run()
+		self.run(argvs)
 
 	def stop(self):
 		"""Stop the daemon."""

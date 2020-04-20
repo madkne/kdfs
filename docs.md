@@ -36,7 +36,7 @@
 ### server-server
 
 - identify : return mac address,version,os info
-- upgrade : get version number of nodes and send source of queen server and client to them nodes and all nodes will restarted
+- upgrade [version] : get version number of nodes and send source of queen server and client to them nodes and all nodes will restarted
 
 ### client-server(queen)
 
@@ -81,3 +81,10 @@
 
 - add : scan all undefined nodes on local network and user can select one (perm:s)
 
+- notify [text] : send and show a notify text to all nodes of kdfs (perm:s)
+
+- config [mode=set|get] [key] [value?] [nodename] : get or set kdfs config for a node (perm:s)
+
+        > config set queen_port 2000 pc1
+        > config get storage pc2
+        

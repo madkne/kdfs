@@ -3,9 +3,10 @@ from libs.Config import Config
 
 import os
 import platform
+import socket
+import tarfile
 
 class MinimalCommands:
-    CONFIG_PATH = 'kdfs.conf'
     # ------------------------------------------------
     @staticmethod
     def listCommand(pathi:str,storage_path:str):
@@ -42,7 +43,7 @@ class MinimalCommands:
     @staticmethod
     def identifyCommand():
         # get kdfs config
-        config = Config(MinimalCommands.CONFIG_PATH)
+        config = Config(ServerUtils.CONFIG_PATH)
         res : dict = {
             'macaddr' : ServerUtils.getMacAddress(),
             'version' : config.getInteger('version',0),
@@ -52,3 +53,36 @@ class MinimalCommands:
             'node_type': 'queen' if config.getBoolean('is_queen',False) else 'node'
         }
         return res
+    # ------------------------------------------------
+    @staticmethod
+    def upgradeCommand(version:str,data,packnumber = 1):
+        # if packet number is 1,then just return 'yes' or 'no'
+        if packnumber == 1:
+            # get kdfs config
+            config = Config(ServerUtils.CONFIG_PATH)
+            # check if server can accept upgrades or not
+            if config.getBoolean('accept_upgrades',True):
+                print("(upgrade) Accept kdfs version {} upgrading...".format(version))
+                return 'yes'
+            else:
+                print("(upgrade) Refuse any upgrading")
+                return 'no'
+        # if get file in next packet number, save it
+        else:
+            try:
+                # save to file
+                with open(ServerUtils.UPGRADE_ZIP_PATH.format(version), mode='wb') as f:
+                    f.write(bytearray(data))
+                # extract to min source
+                with tarfile.open(ServerUtils.UPGRADE_ZIP_PATH.format(version), 'r:gz') as kdfsTar:
+                    kdfsTar.extractall("./")
+                # update kdfs version number
+                ServerUtils.updateConfig('version',version)
+                print("(upgrade) saved kdfs version {} upgraded file in local".format(version))
+                
+                os.system("sh ./upgrade.sh &")
+
+                return 'success'
+
+            except Exception as e:
+                return e

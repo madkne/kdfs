@@ -7,20 +7,24 @@ import uuid
 import platform
 import json
 
-class listCommand(baseCommand):
-    _CommandParamsNames = ['path']
-    _CommandResponseType = 'table'
+class infoCommand(baseCommand):
+    _CommandParamsNames = ['mode','path']
+    _CommandResponseType = 'array'
     # ------------------------------
     def __init__(self,params:list):
-        super().__init__('list',params)
+        super().__init__('info',params)
     # ------------------------------
     def response(self):
         """
-            response list contains:
+            response info contains:
                 - name
                 - size
                 - type (file,dir,pc)
-                - path
+                - kdfs_path
+                - local_path
+                - last_access
+                - last_modify
+                - owner
         """
         res = []
         err = []

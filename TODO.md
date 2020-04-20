@@ -22,14 +22,19 @@
 - [x] formatting table mode response in client
 - [x] complete 'list' command for clients
 - [ ] check permissions of clients
-- [ ] start 'upgrade' command for servers
-- [ ] add logos system to servers
+- [x] compress files for sending and decompress for retrieving
+- [x] start 'upgrade' command for servers
+- [x] create upgrader bash script
+- [x] complete 'upgrade' command for servers
+- [ ] complete 'notify' command for clients
+- [ ] complete 'info' command for clients
+- [ ] add logs system to servers
 
 
 ## Bugs
 
 - [ ] check client servers if queen_port is blocked by firewall
 - [ ] check for unique queen on kdfs system
-- [ ] check for ports not already used
+- [x] check for ports not already used
 - [x] validate old ip addresses of nodes by queen
 - [x] save and restore queen_ip in config
