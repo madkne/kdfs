@@ -45,8 +45,9 @@ class ClientThread(threading.Thread):
                 #     continue
                 # increase packet number
                 self.packetNumber += 1
+                command = {}
                 # get data as command
-                if self.packetNumber == 1:
+                if self.packetNumber == 1 and data is not None:
                     command = data
                     self.commandData = command
                     # if next packet is file
@@ -59,7 +60,7 @@ class ClientThread(threading.Thread):
                     command = self.commandData
                     self.commandData = ''
                 # check for empty command
-                if command == '' or (self.isReceiveOnce and self.packetNumber > 1):
+                if command == '' or command == {} or (self.isReceiveOnce and self.packetNumber > 1):
                     KDFSProtocol.echo("No command received. shutting down socket for \"{}\"...".format(self.ip),'server')
                     self.socket.close()
                     break
@@ -81,7 +82,7 @@ class ClientThread(threading.Thread):
                 
             except Exception as e:
                 KDFSProtocol.echo("Connection closed by client.(1)",'server',e)
-                raise
+                # raise
                 break
     # -----------------------------------
     def getClientCommandResponse(self,command : str,params:list=[],ip:str=''):

@@ -117,7 +117,7 @@ if __name__ == "__main__":
             # end time of process command
             endTime = currentMilliseconds()
             # show command with params on output
-            print("({}) >> [{} sec] {} {}\n\n".format(platform.node(),(endTime-startTime)/1000, command,' '.join(params)))
+            print("\r({}) >> [{} sec] {} {}\n\n".format(platform.node(),(endTime-startTime)/1000, command,' '.join(params)))
             # check for errors
             if response is None or response['data'] is None:
                 cprint(">> [ERR] Can not retrive response from server!",'red',attrs=['bold'])

@@ -43,8 +43,8 @@ class KDFSQueen:
                 ServerUtils.updateNodeByName(nodeName,{'state':'off'})
 
         # KDFSProtocol.echo("(debug) ",detected,len(IPpool))
-        # if not detect all nodes by them old IPs
-        if detected < len(IPpool):
+        # if not detect all nodes by them old IPs and permmit to scan all nodes
+        if detected < len(IPpool) and self.GLOBAL_CONFIG.getBoolean('queen_scan_nodes',True):
             # get all IP addresses between start and end IPs
             IPpool = ServerUtils.getIPAddressesPool(start,end)
             # iterate all ip addresses in pool

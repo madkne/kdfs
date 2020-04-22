@@ -1,6 +1,8 @@
 [kdfs]
 # if this node set as queen
 is_queen= true
+if in queen node, you dont want to any time scan all lost nodes
+queen_scan_nodes = true
 # how many nodes that supported by queen
 queen_max_nodes = 10
 # queen ip for send and receive commands 

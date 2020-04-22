@@ -203,7 +203,7 @@ class KDFSServer:
         # get queen ip from config,if exist
         queenIP = self.KDFS_CONFIG.get('queen_ip','127.0.0.1')
         # validate old queen IP
-        if ServerUtils.checkQueenByIP(queenIP,self.SERVER_PORT,self.CHUNK_SIZE):
+        if ServerUtils.checkQueenByIP(queenIP,self.KDFS_CONFIG):
             self.QUEEN_IP = queenIP
             return
         # check if this system has queen server!

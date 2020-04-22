@@ -27,9 +27,13 @@ class notifyCommand(baseCommand):
         # broadcasting list command with params to all selected nodes
         response = self._broadcastCommand(nodesIPs,'notify',{'text':self._CommandParams['text']})
         # print("(debug) list full response:",response)
+        success_notifies = 0
+        # iterate all response and count success responses
+        for resp in response:
+            if resp['data'] == 'success':
+                success_notifies += 1
         
-
-        return super().response('send notification to {} nodes'.format(len(nodesIPs)))
+        return super().response('send notification to {} nodes and got {} success responses'.format(len(nodesIPs), success_notifies))
             
     # ------------------------------
     # ------------------------------

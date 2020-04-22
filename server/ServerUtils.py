@@ -10,6 +10,7 @@ import subprocess
 class ServerUtils:
     GLOBAL_NODES_PATH = 'database/nodes.json'
     UPGRADE_ZIP_PATH = "./upgrades/kdfs-node-{}.tar.gz"
+    UPGRADE_PATH = "./upgrades/"
     CONFIG_PATH = './kdfs.conf'
     # ----------------------------------
     @staticmethod

@@ -14,8 +14,9 @@ class KDFSProtocol:
     # -------------------------------------------------
     @staticmethod
     def checkChunkSize(chunk_size : int):
-        if chunk_size < 2 + len(KDFSProtocol.END_CHUNK + KDFSProtocol.END_MESSAGE):
-            return 2 + len(KDFSProtocol.END_CHUNK + KDFSProtocol.END_MESSAGE)
+        minSize = 10 + len(KDFSProtocol.END_CHUNK) + len(KDFSProtocol.END_MESSAGE)
+        if chunk_size < minSize:
+            return minSize
         return chunk_size
     # -------------------------------------------------
     @staticmethod
@@ -166,9 +167,12 @@ class KDFSProtocol:
                 msg
                 ),end=end)
         else:
-            print("{} [{}]\t{} : {}".format(
+            # append error message to msg, if exist
+            if err != '' and err != None:
+                msg = "{} ({})".format(msg,colored(err,'red'))
+
+            print("{} [{}]\t{}".format(
                 colored(f"(ERR :{frm[0:6]: ^6})",'red',attrs=['bold']),
                 currentDatetime,
-                msg,
-                colored(err,'red')
+                msg
             ))

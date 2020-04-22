@@ -152,9 +152,14 @@ class MinimalCommands:
             # check if server can accept upgrades or not
             if self.config.getBoolean('accept_upgrades',True):
                 KDFSProtocol.echo("Accept kdfs version {} upgrading...".format(params['version']),'upgrade')
+                # check if upgrades folder is not exsit
+                if not os.path.exists(ServerUtils.UPGRADE_PATH):
+                    os.makedirs(ServerUtils.UPGRADE_PATH)
+                # resturn accept response
                 return ('yes','')
             else:
                 KDFSProtocol.echo("Refuse any upgrading",'upgrade')
+                # return refuse response
                 return ('no','')
         # if get file in next packet number, save it
         else:
@@ -181,6 +186,8 @@ class MinimalCommands:
                 return (e,'')
     # ------------------------------------------------
     def notifyCommand(self,params:dict):
-        Notification(self.config.get('app_name','KDFS'),params['text'],30).send()
-
-        return ('success','')
+        response = Notification(self.config.get('app_name','KDFS'),params['text'],30).send()
+        if response:
+            return ('success','')
+        else:
+            return ('failed','')

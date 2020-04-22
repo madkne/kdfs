@@ -35,7 +35,7 @@
 - [x] complete 'find' command for clients
 - [x] add 'recessive' option to 'find' command
 - [x] complete 'nodes add' command for clients
-- [ ] publish to github
+- [x] publish to github
 - [ ] complete 'copy' command for clients
 - [ ] complete 'move' command for clients
 - [ ] complete 'delete' command for clients
