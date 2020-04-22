@@ -21,6 +21,8 @@ chunk_size = 1024
 accept_upgrades = true
 # how many wait for web socket response
 max_timeout = 60
+# max count of list items for some commands results (find)
+list_limit = 20
 
 # ---- DONT'T CHANGE ----
 [info]

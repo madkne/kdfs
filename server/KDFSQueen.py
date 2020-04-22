@@ -56,20 +56,15 @@ class KDFSQueen:
     def validateNodeByIP(self,IP:str):
         state = 'reject'
         KDFSProtocol.echo("check for {} : ".format(IP),'queen',end='\t')
-        socketi = ServerUtils.socketConnect(IP,self.GLOBAL_PORT,2)
-        
-        try:
-            # send identify command
-            KDFSProtocol.sendMessage(socketi,self.GLOBAL_CHUNK_SIZE,KDFSProtocol.sendCommandFormatter('identify',{},True))
-            # get response of command, if exist!
-            response = KDFSProtocol.receiveMessage(socketi,self.GLOBAL_CHUNK_SIZE)['data']
+        response = ServerUtils.sendAndReceiveServerIdentify(self.GLOBAL_CONFIG,IP)
+        if response is not None:
             print("ACCEPT",end='\t')
             state = 'accept'
             # print('(debug) node identify:',response)
             # check for verify node
             nodeName=ServerUtils.findNodeByMacAddress(response['macaddr'])
             if nodeName != None:
-                print("DETECTED [{}]".format(nodeName))
+                print("DETECT [{}]".format(nodeName))
                 # update node info
                 ServerUtils.updateNodeByName(nodeName,{
                     'ip'            : IP,
@@ -82,16 +77,9 @@ class KDFSQueen:
                     self.upgradeNodeServer(nodeName,IP)
             else:
                 print("UNDEFINED")
-
-        except Exception as e:
+        else:
             print("REJECT")
-            # raise
             state = 'reject'
-            # raise
-        finally:
-            # close socket 
-            if socketi is not None:
-                socketi.close()
         # return state of node
         return state
 

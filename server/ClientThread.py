@@ -81,7 +81,7 @@ class ClientThread(threading.Thread):
                 
             except Exception as e:
                 KDFSProtocol.echo("Connection closed by client.(1)",'server',e)
-                # raise
+                raise
                 break
     # -----------------------------------
     def getClientCommandResponse(self,command : str,params:list=[],ip:str=''):

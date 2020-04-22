@@ -29,21 +29,33 @@ class ServerUtils:
         return socketi
     # ----------------------------------
     @staticmethod
-    def checkQueenByIP(ip:str,port:str,chunk_size=1024) -> bool:
-        socketi = ServerUtils.socketConnect(ip,port,2)
+    def sendAndReceiveServerIdentify(config:Config,ip:str):
+        socketi = ServerUtils.socketConnect(ip,config.getInteger('queen_port',4040),2)
         try:
             # send identify command
-            KDFSProtocol.sendMessage(socketi,chunk_size,KDFSProtocol.sendCommandFormatter('identify'))
+            chunk_size = config.getInteger('chunk_size',1024)
+            KDFSProtocol.sendMessage(socketi,chunk_size,KDFSProtocol.sendCommandFormatter('identify',{},True))
             # get response of command, if exist!
             response = KDFSProtocol.receiveMessage(socketi,chunk_size)['data']
-            # close socket
-            socketi.close()
-            # check for node type 
-            if response['node_type'] == 'queen':
-                return True
-
-        except Exception:
-            return False
+            # print('(debug) node identify:',response)
+            return response
+        except Exception as e:
+            return None
+            # raise
+        finally:
+            # close socket 
+            if socketi is not None:
+                socketi.close()
+        return None
+    # ----------------------------------
+    @staticmethod
+    def checkQueenByIP(ip:str,config:Config) -> bool:
+        # connect by socket and send identify command and get response
+        response = ServerUtils.sendAndReceiveServerIdentify(config,ip)
+        # check for response exist and node type 
+        if response is not None and response['node_type'] == 'queen':
+            return True
+        
         return False
     # ----------------------------------
     @staticmethod

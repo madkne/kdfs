@@ -34,12 +34,12 @@
 - [x] create simple regex searcher
 - [x] complete 'find' command for clients
 - [x] add 'recessive' option to 'find' command
-- [ ] complete 'add' command for clients
+- [x] complete 'nodes add' command for clients
+- [ ] publish to github
 - [ ] complete 'copy' command for clients
 - [ ] complete 'move' command for clients
 - [ ] complete 'delete' command for clients
 - [ ] complete 'config' command for clients
-- [ ] publish to github
 
 
 ## Bugs

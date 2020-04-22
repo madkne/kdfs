@@ -40,8 +40,12 @@ def help():
         \n- find [mode=name|content] [type=rec|file] [path] [regex]\
         \nfind by text (include simple regular expression) in filenames, direnames and contents and return list of find paths (perm:c)\
         \n\t> find name file \"*://\" \"sam%-###.txt\"\
-        \n\t> find content all \"pc1://home/\" \"%hello world!%\"\
+        \n\t> find content all \"pc1://home/\" \"hello world!\"\
         \n---------------------------\
+        \n- nodes add [name?] [ip?]\
+        \nscan all undefined nodes on local network and user can select one to add in nodes database (perm:s)\
+        \n\t> nodes add\
+        \n\t> nodes add pc4 \"192.168.1.6\" \
         \n")
 # ------------------------------------------------
 def displayResponseAsTable(response: list):
@@ -102,10 +106,11 @@ if __name__ == "__main__":
         print('Please Wait...',end="\r")
         try:
             # create a socket object
-            socketi = ServerUtils.socketConnect(KDFSConfig.get('client_ip','127.0.0.1'),KDFSConfig.getInteger('client_port',4041),KDFSConfig.get('max_timeout',60))
+            socketi = ServerUtils.socketConnect(KDFSConfig.get('client_ip','127.0.0.1'),KDFSConfig.getInteger('client_port',4041),KDFSConfig.getInteger('max_timeout',60))
             # send command to server
             chunk_size = KDFSConfig.getInteger('chunk_size',1024)
             KDFSProtocol.sendMessage(socketi,chunk_size,KDFSProtocol.sendCommandFormatter(command,params))
+            # print("(debug):",socketi,chunk_size,command,params)
             # get response of command
             response = KDFSProtocol.receiveMessage(socketi,chunk_size)
             # print("(debug) receive response : ",response)
@@ -114,6 +119,9 @@ if __name__ == "__main__":
             # show command with params on output
             print("({}) >> [{} sec] {} {}\n\n".format(platform.node(),(endTime-startTime)/1000, command,' '.join(params)))
             # check for errors
+            if response is None or response['data'] is None:
+                cprint(">> [ERR] Can not retrive response from server!",'red',attrs=['bold'])
+                exit(1)
             if len(response['errors']) > 0:
                 for err in response['errors']:
                     cprint(">> [ERR] {}".format(err),'red',attrs=['bold'])
@@ -135,7 +143,7 @@ if __name__ == "__main__":
             exit(0)
         except Exception as e:
             cprint("can not connect to local kdfs server or retrive response :{}".format(e),'red',attrs=['bold'])
-            # raise
+            raise
             # print("raise an exception:",e)
             exit(1)
         finally:

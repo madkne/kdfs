@@ -215,7 +215,7 @@ class KDFSServer:
             IPpool = ServerUtils.getIPAddressesPool(self.KDFS_START_IP,self.KDFS_END_IP)
             # iterate all IPs of pool
             for IP in IPpool:
-                if ServerUtils.checkQueenByIP(IP,self.SERVER_PORT,self.CHUNK_SIZE):
+                if ServerUtils.checkQueenByIP(IP,self.KDFS_CONFIG):
                     self.QUEEN_IP = IP
                     break
 
