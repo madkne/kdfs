@@ -19,6 +19,8 @@ nodes_end_ip = 192.168.1.171
 chunk_size = 1024
 # if server can accept any upgrades from queen server or not!
 accept_upgrades = true
+# how many wait for web socket response
+max_timeout = 60
 
 # ---- DONT'T CHANGE ----
 [info]
@@ -28,3 +30,6 @@ client_ip = 127.0.0.1
 version = 90
 
 programmer = madkne
+
+# name of application
+app_name = Kimia Distributed File System

@@ -10,9 +10,10 @@ import json
 class listCommand(baseCommand):
     _CommandParamsNames = ['path']
     _CommandResponseType = 'table'
+    _CommandPermissions = ['r']
     # ------------------------------
-    def __init__(self,params:list):
-        super().__init__('list',params)
+    def __init__(self,ip,params:list):
+        super().__init__(ip,'list',params)
     # ------------------------------
     def response(self):
         """
@@ -24,6 +25,8 @@ class listCommand(baseCommand):
         """
         res = []
         err = []
+        # check for command permission
+        if not self._IsAccessToCommand: return super().response(res,err)
         # get list of all nodes as drives, if path is empty
         if self._CommandParams['path'] is None or self._CommandParams['path'] == '.':
             nodes = self._getActiveNodes()
@@ -36,13 +39,12 @@ class listCommand(baseCommand):
                 })
         # if path not empty
         else:
-            # parse path
-            parsedPath = self._parsePath(self._CommandParams['path'])
-            # print("(debug) list:",self._CommandParams,parsedPath)
-            # get all selected in path nodes IPs
-            nodesIPs = self._getNodesByName(parsedPath['node'])
-            # broadcasting list command with params to all selected nodes
-            response = self._broadcastCommand(nodesIPs,'list',{'path':parsedPath['rel_path']})
+            # get response by path
+            response = self._getNodeIPsByPath()
+            # if raise an error
+            if response['error'] is not None:
+                return super().response(res,[response['error']])
+            else: response = response['data']
             # print("(debug) list full response:",response)
             # normalize response 
             for name,resp in response.items():

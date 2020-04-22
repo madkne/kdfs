@@ -1,4 +1,3 @@
-# from commands.identify import identifyCommand
 from server.KDFSProtocol import KDFSProtocol
 from libs.Config import Config
 
@@ -14,7 +13,7 @@ class ServerUtils:
     CONFIG_PATH = './kdfs.conf'
     # ----------------------------------
     @staticmethod
-    def socketConnect(host:str,port:int,timeout=1):
+    def socketConnect(host:str,port:int,timeout=2):
         socketi = None
         try:
             socketi = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
@@ -31,12 +30,12 @@ class ServerUtils:
     # ----------------------------------
     @staticmethod
     def checkQueenByIP(ip:str,port:str,chunk_size=1024) -> bool:
-        socketi = ServerUtils.socketConnect(ip,port)
+        socketi = ServerUtils.socketConnect(ip,port,2)
         try:
             # send identify command
             KDFSProtocol.sendMessage(socketi,chunk_size,KDFSProtocol.sendCommandFormatter('identify'))
             # get response of command, if exist!
-            response = KDFSProtocol.receiveMessage(socketi,chunk_size)
+            response = KDFSProtocol.receiveMessage(socketi,chunk_size)['data']
             # close socket
             socketi.close()
             # check for node type 
@@ -52,21 +51,6 @@ class ServerUtils:
         macaddr = ':'.join(['{:02x}'.format((uuid.getnode() >> ele) & 0xff) 
 for ele in range(0,8*6,8)][::-1])
         return macaddr
-    # ----------------------------------
-    @staticmethod
-    def updateConfig(key:str,value):
-        # convert value to string, if not
-        if type(value) is int:
-            value = str(value)
-        elif type(value) is bool:
-            if value: value = 'true'
-            else : value = 'false'
-        elif type(value) is not str:
-            value = str(value)
-        # open kdfs config file
-        config = Config(ServerUtils.CONFIG_PATH)
-        # update kdfs config file
-        config.updateItem(key,value)
     # ----------------------------------
     @staticmethod
     def runShellFile(path:str):
@@ -142,6 +126,27 @@ for ele in range(0,8*6,8)][::-1])
         return None
     # ----------------------------------
     @staticmethod
+    def getNodePermssionsByName(name:str) -> list:
+        # open nodes.json
+        nodes : dict = json.load(open(ServerUtils.GLOBAL_NODES_PATH,'r'))
+        # get values of node, if exist!
+        node = nodes.get(name,None)
+        if node is None: return []
+        # get node perms
+        perms = node['perms']
+        # split permssions
+        permsList = []
+        i = 0
+        while i< len(perms): 
+            perm = perms[i]
+            if i+1 < len(perms) and perms[i+1] == '+':
+                perm += perms[i+1]
+                i += 1
+            permsList.append(perm)
+            i += 1
+        return permsList
+    # ----------------------------------
+    @staticmethod
     def getNodeByName(name:str):
         # open nodes.json
         nodes : dict = json.load(open(ServerUtils.GLOBAL_NODES_PATH,'r'))
@@ -164,7 +169,7 @@ for ele in range(0,8*6,8)][::-1])
                 "os": values.get('os',node['os']), 
                 "ip": values.get('ip',node['ip']),
                 "last_updated": values.get('last_updated',node['last_updated']),
-                "perm": values.get('perm',node['perm']),
+                "perms": values.get('perms',node['perms']),
                 "arch": values.get('arch',node['arch']),
                 "hostname": values.get('hostname',node['hostname']),
                 "node_type": values.get('node_type',node['node_type']),

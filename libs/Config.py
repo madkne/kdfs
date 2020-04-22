@@ -42,7 +42,16 @@ class Config:
         if boolean.lower() == 'false' : return False
         return True
     # -----------------------------------
-    def updateItem(self,key,value:str):
+    def updateItem(self,key,value):
+        # convert value to string, if not
+        if type(value) is int:
+            value = str(value)
+        elif type(value) is bool:
+            if value: value = 'true'
+            else : value = 'false'
+        elif type(value) is not str:
+            value = str(value)
+        # set value in items
         self._items[key] = value
         # write to config file
         with open(self._path,'w',encoding='utf-8') as f:

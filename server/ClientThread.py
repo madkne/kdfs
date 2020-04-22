@@ -6,8 +6,10 @@ from libs.Config import Config
 
 
 import socket
+import importlib
 import threading
 import json
+import os
 
 
 
@@ -26,10 +28,12 @@ class ClientThread(threading.Thread):
         self.commandData = {}
         self.isPacketFile = False
         self.isBinaryFile = False
-        print(f"(server) New server socket thread started for {ip}")
+        self.isReceiveOnce = True
+        self.MinimalCommands = MinimalCommands()
+        KDFSProtocol.echo(f"New server socket thread started for {ip}",'server')
     # -----------------------------------
     def run(self): 
-        # print("(debug) run client ...")
+        # KDFSProtocol.echo("(debug) run client ...")
         while True:
             try:
                 if not self.socket: break
@@ -46,44 +50,51 @@ class ClientThread(threading.Thread):
                     command = data
                     self.commandData = command
                     # if next packet is file
-                    if command['send_file']: self.isPacketFile = True
+                    self.isPacketFile = command['send_file']
                     # if next packet is binary file
-                    if command['send_binary']: self.isBinaryFile = True
+                    self.isBinaryFile = command['send_binary']
+                    # if continue to send packets
+                    self.isReceiveOnce = command['send_once']
                 else:
                     command = self.commandData
                     self.commandData = ''
                 # check for empty command
-                if command == '':
-                    print("(server) No command received. shutting down socket...")
+                if command == '' or (self.isReceiveOnce and self.packetNumber > 1):
+                    KDFSProtocol.echo("No command received. shutting down socket for \"{}\"...".format(self.ip),'server')
                     self.socket.close()
                     break
-                print('(server) Command Request received : {} (request #{})'.format(command['command'],self.packetNumber))
+                KDFSProtocol.echo('Command Request received : {} (request #{})'.format(command['command'],self.packetNumber),'server')
                 response = ''
                 # get queen command response as json
                 if command['send_by'] == 'queen':
                     response = self.getQueenCommandResponse(command['command'],command['params'],data,self.packetNumber)
-                    print("(server) Sending response for {} node...".format(command['send_by']))
+                    KDFSProtocol.echo("Sending response for {} node...".format(command['send_by']),'server')
                     
                 # get client command response as json (for queen!)
                 elif self.config.getBoolean('is_queen',False):
-                    response = self.getClientCommandResponse(command['command'],command['params'])
-                    print("(queen) Sending response for {} node...".format(command['send_by']))
-                    # print("(debug) response:",response)
+                    response = self.getClientCommandResponse(command['command'],command['params'],self.ip)
+                    KDFSProtocol.echo("Sending response for \"{}\" node...".format(command['send_by']),'queen')
+                    # KDFSProtocol.echo("(debug) response:",response)
                 # send response of command
                 KDFSProtocol.sendMessage(self.socket,chunk_size,response)
                 
                 
             except Exception as e:
-                print("(server) connection closed by client.(1)",e)
+                KDFSProtocol.echo("Connection closed by client.(1)",'server',e)
                 # raise
                 break
     # -----------------------------------
-    def getClientCommandResponse(self,command : str,params:list=[]):
-        from commands.list import listCommand
-        # list command
-        if command == 'list':
-            return listCommand(params).response()
-
+    def getClientCommandResponse(self,command : str,params:list=[],ip:str=''):
+        # init vars
+        commandClass = None
+        # if command is identify
+        if command == 'identify':
+            (info,err) = MinimalCommands().identifyCommand()
+            return KDFSProtocol.sendResponseFormatter(info)
+        # check exist such command
+        elif os.path.exists("./commands/{}.py".format(command)):
+            commandClass = getattr(importlib.import_module("commands.{}".format(command)), "{}Command".format(command))
+            return commandClass(ip,params).response()
         # any other invalid commands
         else:
             return KDFSProtocol.sendResponseFormatter('',['Not found such command from client!'])
@@ -91,20 +102,17 @@ class ClientThread(threading.Thread):
     def getQueenCommandResponse(self,command:str,params:dict={},data=None,packnumber=1):
         response = ''
         error = ''
-        # identify command
-        if command == 'identify':
-            response = MinimalCommands.identifyCommand()
-        # upgrade command
-        elif command == 'upgrade':
-            response = MinimalCommands.upgradeCommand(params['version'],data,packnumber)
-        # list command
-        elif command == 'list':
-            response = MinimalCommands.listCommand(params['path'],self.config.get('storage','/'))
-            if type(response) is not list:
-                error = response
-                response = []
-
-        return json.dumps(KDFSProtocol.sendResponseFormatter(response,[error]))
+        # append more data to params of command
+        params['data'] = data
+        params['packnumber'] = packnumber
+        # try to calling command of minimal class
+        try:
+            (response,error) = getattr(self.MinimalCommands,"{}Command".format(command))(params)
+        except (AttributeError):
+            error = 'Not found such command!'
+        # KDFSProtocol.echo("response:{},error:{}".format(response,error),'debug')
+    #    return repsonse with error of command
+        return KDFSProtocol.sendResponseFormatter(response,[error])
     # -----------------------------------
     def stop(self):
         self._stop_event.set()

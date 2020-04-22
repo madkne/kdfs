@@ -1,11 +1,12 @@
 
 
-
+from libs.termcolor import colored,cprint
 from libs.Daemon import Daemon
 from libs.Config import Config
 from server.KDFSServer import KDFSServer
 from commands.minimal import MinimalCommands
 from server.ServerUtils import ServerUtils
+from commands.minimalUitls import minimalUitls
 
 import sys, time
 import json
@@ -18,16 +19,18 @@ class KDFSDaemon(Daemon):
         def run(self,argvs):
                 # read kdfs config file
                 KDFSConfig = Config(ServerUtils.CONFIG_PATH)
-                print("\r\nKDFS SERVER (version {})".format(KDFSConfig.get('version','unknown')))
+                cprint("\r\nKDFS SERVER (version {})".format(KDFSConfig.get('version','unknown')),'green',attrs=['bold'])
                 # get kdfs server info
-                info = MinimalCommands.identifyCommand()
+                (info,err) = MinimalCommands().identifyCommand()
                 print("MAC Address is {} on {}({})".format(info['macaddr'],info['os'],info['arch']))
                 # check if server is queen
                 if KDFSConfig.getBoolean('is_queen',False):
-                        print("*** THIS SERVER RUN AS QUEEN ***")
+                        cprint("*** THIS SERVER RUN AS QUEEN ***",'yellow')
                 print("\n")
-                # print(KDFSConfig.getItems())
-                # run kdfs server'
+
+                # print(minimalUitls.searchTextByRegex("home","%.md"))
+                # print(MinimalCommands().findCommand({'type':'rec','path':'/','mode':'name','regex':'Until'}))
+                
                 server = KDFSServer(KDFSConfig)
             
  

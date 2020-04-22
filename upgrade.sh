@@ -7,7 +7,7 @@ for pid in $pids[@]
 do
     echo "(bash) Killing $pid process..."
     # exit the process 
-    kill -9 $pid 2> /dev/null || echo "(bash) Can not kill $pid process :("
+    kill -9 $pid 2> /dev/null || killall -9 python3 ; echo "(bash) Can not kill $pid process :("
 done
 sleep 2 #after 2 seconds
 echo "(bash) Restart KDFS server...."

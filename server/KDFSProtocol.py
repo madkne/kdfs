@@ -1,8 +1,10 @@
+from libs.termcolor import cprint,colored
 
 import socket
 import json
 import math
 import gzip
+from datetime import datetime
 
 class KDFSProtocol:
     END_CHUNK = b'\r!\n'
@@ -57,19 +59,19 @@ class KDFSProtocol:
                 else:
                     line += chunk_extra
                     extra = b''
-                # print("(debug) chunk:{}\nchunk_extra:{} (extra:{})\nline:{} (line_end:{},chunk_size:{})\ndata:{}\n----------------".format(chunk,chunk_extra,extra,line,line_end,chunk_size,data))
+                # KDFSProtocol.echo("(debug) chunk:{}\nchunk_extra:{} (extra:{})\nline:{} (line_end:{},chunk_size:{})\ndata:{}\n----------------".format(chunk,chunk_extra,extra,line,line_end,chunk_size,data))
                 # check for end of message
                 msg_end = chunk_extra.find(KDFSProtocol.END_MESSAGE)
                 # if message end, then break
                 if msg_end != -1:
                     break
             except Exception as e:
-                print("(protocol) raise an exception when receiving message:",e)
+                KDFSProtocol.echo("raise an exception when receiving message",'protocol',e)
                 break
 
             # if counter > 30: break
         
-        # print('(protocol) data resv:',data)
+        # KDFSProtocol.echo('(protocol) data resv:',data)
         # return empty, if data is empty
         if len(data) == 0:
             return None
@@ -89,13 +91,14 @@ class KDFSProtocol:
         return message
     # -------------------------------------------------
     @staticmethod
-    def sendCommandFormatter(command : str,params:dict={},send_queen=False,send_file=False,send_binary=False) -> str:
+    def sendCommandFormatter(command : str,params:dict={},send_queen=False,send_file=False,send_binary=False,send_once=True) -> str:
         message : dict = {
             'command'   : command,
             'params'    : params,
             'send_by'   : 'queen' if send_queen else 'client',
             'send_file' : send_file,
-            'send_binary': send_binary
+            'send_binary': send_binary,
+            'send_once' : send_once
         }
 
         return json.dumps(message)
@@ -132,14 +135,40 @@ class KDFSProtocol:
         #=>calc data chunks count
         dataLen = len(data)
         dataChunks = math.ceil(dataLen / chunk_size)
-        # print("(protocol) Send Data chunks:{} ({} bytes)".format(dataChunks,dataLen))
+        # KDFSProtocol.echo("(protocol) Send Data chunks:{} ({} bytes)".format(dataChunks,dataLen))
         #=>send data chunks
         for i in range(0,dataChunks,1):
-            chunk = data[i*chunk_size:i*chunk_size+chunk_size]
-            # append end chunk
-            chunk += KDFSProtocol.END_CHUNK
-            # if last chunk, then append end message
-            if i+1 == dataChunks:
-                chunk += KDFSProtocol.END_MESSAGE
-            # print('(debug) send chunk:',chunk)
-            socketi.send(chunk)
+            try:
+                chunk = data[i*chunk_size:i*chunk_size+chunk_size]
+                # append end chunk
+                chunk += KDFSProtocol.END_CHUNK
+                # if last chunk, then append end message
+                if i+1 == dataChunks:
+                    chunk += KDFSProtocol.END_MESSAGE
+                # KDFSProtocol.echo('(debug) send chunk:',chunk)
+                socketi.send(chunk)
+            except (Exception,KeyboardInterrupt) as e:
+                KDFSProtocol.echo('Raise an exception on sending chunks','protocol',e,is_err=True)
+                return
+    # -------------------------------------------------
+    @staticmethod
+    def echo(msg:str,frm:str='KDFS',err='',end='\n',is_err=False):
+        currentDatetime = datetime.now().strftime("%Y.%m.%d %H:%M:%S")
+        if type(frm) is str: frm = frm.upper()
+        else: frm = str(frm)
+
+        if type(err) is not str: err = str(err)
+
+        if err == '' and not is_err:
+            print("{} [{}]\t{}".format(
+                colored(f"(INFO:{frm[0:6]: ^6})",'blue',attrs=['bold']),
+                currentDatetime,
+                msg
+                ),end=end)
+        else:
+            print("{} [{}]\t{} : {}".format(
+                colored(f"(ERR :{frm[0:6]: ^6})",'red',attrs=['bold']),
+                currentDatetime,
+                msg,
+                colored(err,'red')
+            ))

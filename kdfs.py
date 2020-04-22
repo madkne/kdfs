@@ -1,6 +1,7 @@
 
 #*****************************************
 from libs.Config import Config
+from libs.termcolor import cprint
 from libs.tabulate import tabulate
 from server.KDFSProtocol import KDFSProtocol
 from server.ServerUtils import ServerUtils
@@ -19,21 +20,36 @@ KDFSConfig : Config
 def help():
     print("Welcome to Kimia Kimia Distributed File System {}!  This is the help utility.".format(KDFSConfig.get('version','unknown')))
     print("\
-        - list [path]\
+        \nlist [path]\
         \nreturn list of directories and files in [path] (perm:r)\
         \n\t> list\
         \n\t> list pc1://home\
-        ---------------------------\n\
-        - info [mode=file] [path]\
-        \nreturn info of file in [path] (perm:r+)\
-        \n\t> info file pc1://hello.md\
-        ---------------------------\n\
-        ")
+        \n---------------------------\
+        \n- notify [text]\
+        \nsend and show a notify text to all nodes of kdfs (perm:s)\
+        \n\t> notify \"hello world!\"\
+        \n---------------------------\
+        \n- stat [path]\
+        \nreturn info of file or directory in [path] (perm:r+)\
+        \n\t> stat pc1://hello.md\
+        \n---------------------------\
+        \n- exist [path]\
+        \nreturn boolean for check exist path (perm:r)\
+        \n\t> exist pc1://foo\
+        \n---------------------------\
+        \n- find [mode=name|content] [type=rec|file] [path] [regex]\
+        \nfind by text (include simple regular expression) in filenames, direnames and contents and return list of find paths (perm:c)\
+        \n\t> find name file \"*://\" \"sam%-###.txt\"\
+        \n\t> find content all \"pc1://home/\" \"%hello world!%\"\
+        \n---------------------------\
+        \n")
 # ------------------------------------------------
 def displayResponseAsTable(response: list):
-    lastSpaces = '  '
     itemsList = []
     headers = []
+    if len(response) == 0:
+        return
+        
     # get headers of response
     for key,val in response[0].items():
         headers.append(key)
@@ -48,6 +64,16 @@ def displayResponseAsTable(response: list):
     print(tabulate(itemsList, headers=headers, tablefmt='orgtbl'))
 
 # ------------------------------------------------
+def displayResponseAsArray(response: dict):
+    itemsList = []
+    # get items list of response
+    for key in response:
+        itemsList.append([key,response[key]])
+        #     print(val,end=lastSpaces)
+        # print()
+    print(tabulate(itemsList, tablefmt='presto'))
+
+# ------------------------------------------------
 currentMilliseconds = lambda: int(round(time.time() * 1000))
 # ------------------------------------------------
 # when start kdfs client program
@@ -55,7 +81,7 @@ if __name__ == "__main__":
     # read kdfs config file
     KDFSConfig = Config(ServerUtils.CONFIG_PATH)
     # KDFSConfig.read("kdfs.conf")
-    print("KDFS CLIENT shell (version {})".format(KDFSConfig.get('version','unknown')))
+    cprint("KDFS CLIENT shell (version {})".format(KDFSConfig.get('version','unknown')),'blue',attrs=['bold'])
     print("Using \"help\" for more information.")
     print("\n")
     # if not found any command
@@ -76,7 +102,7 @@ if __name__ == "__main__":
         print('Please Wait...',end="\r")
         try:
             # create a socket object
-            socketi = ServerUtils.socketConnect(KDFSConfig.get('client_ip','127.0.0.1'),KDFSConfig.getInteger('client_port',4041),60)
+            socketi = ServerUtils.socketConnect(KDFSConfig.get('client_ip','127.0.0.1'),KDFSConfig.getInteger('client_port',4041),KDFSConfig.get('max_timeout',60))
             # send command to server
             chunk_size = KDFSConfig.getInteger('chunk_size',1024)
             KDFSProtocol.sendMessage(socketi,chunk_size,KDFSProtocol.sendCommandFormatter(command,params))
@@ -90,19 +116,25 @@ if __name__ == "__main__":
             # check for errors
             if len(response['errors']) > 0:
                 for err in response['errors']:
-                    print(">> [ERR]",err)
+                    cprint(">> [ERR] {}".format(err),'red',attrs=['bold'])
                 exit(1)
             # get response type from meta
             responseType = response['meta']['type']
             # if response type is table
             if responseType == 'table':
                 displayResponseAsTable(response['data'])
+            # if response type is array
+            elif responseType == 'array':
+                displayResponseAsArray(response['data'])
+            # if response type is text
+            elif responseType == 'text':
+                print(response['data'])
             # close socket
             socketi.close()
         except KeyboardInterrupt:
             exit(0)
         except Exception as e:
-            print("can not connect to local kdfs server or retrive response!",e)
+            cprint("can not connect to local kdfs server or retrive response :{}".format(e),'red',attrs=['bold'])
             # raise
             # print("raise an exception:",e)
             exit(1)

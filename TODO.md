@@ -21,14 +21,25 @@
 - [x] return list of all nodes if path is empty for list command
 - [x] formatting table mode response in client
 - [x] complete 'list' command for clients
-- [ ] check permissions of clients
+- [x] check permissions of clients
 - [x] compress files for sending and decompress for retrieving
 - [x] start 'upgrade' command for servers
 - [x] create upgrader bash script
 - [x] complete 'upgrade' command for servers
-- [ ] complete 'notify' command for clients
-- [ ] complete 'info' command for clients
+- [x] complete 'notify' command for clients
+- [x] complete 'stat' command for clients
 - [ ] add logs system to servers
+- [x] using colors for logs in terminal
+- [x] complete 'exist' command for clients
+- [x] create simple regex searcher
+- [x] complete 'find' command for clients
+- [x] add 'recessive' option to 'find' command
+- [ ] complete 'add' command for clients
+- [ ] complete 'copy' command for clients
+- [ ] complete 'move' command for clients
+- [ ] complete 'delete' command for clients
+- [ ] complete 'config' command for clients
+- [ ] publish to github
 
 
 ## Bugs
