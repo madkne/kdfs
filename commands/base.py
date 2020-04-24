@@ -118,7 +118,54 @@ class baseCommand:
 
         return nodesIPs
     # ------------------------------
-    def _broadcastCommand(self,nodesIPs:list,command,params:dict={}):
+    def _broadcastFile(self,nodeIPs:list,command,params:dict={},file_content=b''):
+        # get kdfs config
+        finalResponse = {}
+        config = self._getConfig()
+        port = config.getInteger('queen_port',4040)
+        chunk_size = config.getInteger('chunk_size',1024)
+        socket_list = {}
+        # create socket connections by IP nodes
+        for IP in nodeIPs:
+            # get node name by IP
+            nodeName = ServerUtils.findNodeByIP(IP)
+            # connect to socket server
+            socketi = ServerUtils.socketConnect(IP,port,config.getInteger('max_timeout',60))
+            try:   
+                # send command with params
+                KDFSProtocol.echo("Sending \"{}\" command by \"{}\" param(s) to \"{}\" node ...".format(command,','.join(params),nodeName),'command')
+
+                KDFSProtocol.sendMessage(socketi,chunk_size,KDFSProtocol.sendCommandFormatter(command,params,send_queen=True,send_file=True,max_send_packets=2))
+                # get response of command, if exist!
+                response = KDFSProtocol.receiveMessage(socketi,chunk_size)
+                # KDFSProtocol.echo(f'response data(accept):{response}','debug')
+                # get error of response,if exist
+                if response['data'] is None or (response['data'] != 'success' and response['data'] != 'yes'):
+                    return ('','failed to retrive accept response for send file')
+                
+                # if file to send, send file
+                KDFSProtocol.echo("Sending file for \"{}\" command to \"{}\" node ...".format(command,nodeName),'command')
+
+                # KDFSProtocol.echo(f'data file:{params}','debug')
+                KDFSProtocol.sendMessage(socketi,chunk_size,file_content,send_file=True) 
+                # get response of file, if exist!
+                response = KDFSProtocol.receiveMessage(socketi,chunk_size)
+                # get error of response,if exist
+                if response['errors'] is not None and len(response['errors'])>1:
+                    return ('',response['errors'][0])
+                
+
+            except Exception as e:
+                KDFSProtocol.echo("Raise an exception when broadcasting file",'command',err=e,is_err=True)
+                # raise
+            finally:
+                # close socket 
+                if socketi is not None:
+                    socketi.close()
+        # return success response to send file successfully
+        return ('success','')
+    # ------------------------------
+    def _broadcastCommand(self,nodesIPs:list,command,params:dict={},recv_file=False):
         # get kdfs config
         finalResponse = {}
         config = self._getConfig()
@@ -129,19 +176,21 @@ class baseCommand:
             # get node name by IP
             nodeName = ServerUtils.findNodeByIP(IP)
             KDFSProtocol.echo("Sending \"{}\" command by \"{}\" param(s) to \"{}\" node ...".format(command,','.join(params),nodeName),'command')
+            # connect to socket server
             socketi = ServerUtils.socketConnect(IP,port,config.getInteger('max_timeout',60))
-            try:
-                # send list command with relative path
-                KDFSProtocol.sendMessage(socketi,chunk_size,KDFSProtocol.sendCommandFormatter(command,params,True))
+            try: 
+                # send command with params
+                KDFSProtocol.sendMessage(socketi,chunk_size,KDFSProtocol.sendCommandFormatter(command,params,send_queen=True,recv_file=recv_file))
                 # get response of command, if exist!
-                response = KDFSProtocol.receiveMessage(socketi,chunk_size)
+                response = KDFSProtocol.receiveMessage(socketi,chunk_size,is_file=recv_file)
                 # print('(debug) node list response:',response)
                 # append response to final by node name
                 finalResponse[nodeName] = response
 
 
             except Exception as e:
-                pass
+                KDFSProtocol.echo("Raise an exception when broadcasting command",'command',err=e,is_err=True)
+                # raise
             finally:
                 # close socket 
                 if socketi is not None:

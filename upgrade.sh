@@ -11,5 +11,6 @@ do
 done
 sleep 2 #after 2 seconds
 echo "(bash) Restart KDFS server...."
-python3 server.py start
+# python3 server.py start
+bash ./kdfs_server.sh
 # echo "\n\n"

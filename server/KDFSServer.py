@@ -9,6 +9,7 @@ import socket
 import multiprocessing
 import threading
 import json
+import os
 # from socketserver import ThreadingMixIn 
 
 class KDFSServer:
@@ -143,6 +144,7 @@ class KDFSServer:
             self.SERVER_SOCKET.bind((self.HOST_NAME, self.SERVER_PORT))  
             self.SERVER_SOCKET.listen(self.MAX_LISTEN)
         except:
+            self.SERVER_SOCKET.close()
             KDFSProtocol.echo("Can not bind server on {} port".format(self.SERVER_PORT),'server',is_err=True)
             return
         # self.SERVER_SOCKET.settimeout(1000)    
@@ -156,8 +158,9 @@ class KDFSServer:
                 KDFSProtocol.echo(f"Connection from {ip} has been established.",'server')
 
                 newthread = ClientThread(ip,port,clientsocket,self.KDFS_CONFIG) 
+                self.CLIENT_THREADS.append(newthread)
                 newthread.start() 
-                self.CLIENT_THREADS.append(newthread) 
+                
                 
             except KeyboardInterrupt:
                 break
@@ -190,6 +193,13 @@ class KDFSServer:
                 # close server connection socket
                 self.SERVER_SOCKET.close()  
                 self.SERVER_SOCKET = None  
+                # check if logs.log is exist, then remove it
+                if os.path.exists(ServerUtils.LOGS_PATH):
+                    os.remove(ServerUtils.LOGS_PATH)
+                # if tmp directory not exist, create it!
+                if os.path.exists(ServerUtils.TMP_PATH):
+                    pass #TODO:
+                    # os.remove()
         except Exception as e:
             KDFSProtocol.echo("Raise an Exception when Terminating",err=e)
         finally:

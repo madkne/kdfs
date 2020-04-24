@@ -6,12 +6,15 @@ import json
 import uuid
 import os
 import subprocess
+import platform
 
 class ServerUtils:
     GLOBAL_NODES_PATH = 'database/nodes.json'
     UPGRADE_ZIP_PATH = "./upgrades/kdfs-node-{}.tar.gz"
     UPGRADE_PATH = "./upgrades/"
     CONFIG_PATH = './kdfs.conf'
+    LOGS_PATH = './logs.log'
+    TMP_PATH = './tmp/'
     # ----------------------------------
     @staticmethod
     def socketConnect(host:str,port:int,timeout=2):
@@ -28,6 +31,14 @@ class ServerUtils:
             return None
 
         return socketi
+
+    # ----------------------------------
+    @staticmethod
+    def checkTmpDirectory():
+        # if tmp directory not exist, create it!
+        if not os.path.exists(ServerUtils.TMP_PATH):
+            os.makedirs(ServerUtils.TMP_PATH)
+        return ServerUtils.TMP_PATH
     # ----------------------------------
     @staticmethod
     def sendAndReceiveServerIdentify(config:Config,ip:str):
@@ -35,7 +46,7 @@ class ServerUtils:
         try:
             # send identify command
             chunk_size = config.getInteger('chunk_size',1024)
-            KDFSProtocol.sendMessage(socketi,chunk_size,KDFSProtocol.sendCommandFormatter('identify',{},True))
+            KDFSProtocol.sendMessage(socketi,chunk_size,KDFSProtocol.sendCommandFormatter('identify',{},send_queen=True))
             # get response of command, if exist!
             response = KDFSProtocol.receiveMessage(socketi,chunk_size)['data']
             # print('(debug) node identify:',response)
@@ -58,6 +69,13 @@ class ServerUtils:
             return True
         
         return False
+    # ----------------------------------
+    @staticmethod
+    def detectOS():
+        """
+        return 'linux' | 'windows'
+        """
+        return platform.system().lower()
     # ----------------------------------
     @staticmethod
     def getMacAddress():
@@ -170,7 +188,10 @@ for ele in range(0,8*6,8)][::-1])
     @staticmethod
     def updateNodeByName(name:str,values:dict={}):
         # open nodes.json
-        nodes : dict = json.load(open(ServerUtils.GLOBAL_NODES_PATH,'r'))
+        try:
+            nodes : dict = json.load(open(ServerUtils.GLOBAL_NODES_PATH,'r'))
+        except:
+            return
         # get values of node, if exist!
         node = nodes.get(name,None)
         if node is None: return

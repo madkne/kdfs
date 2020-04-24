@@ -1,0 +1,34 @@
+
+- list [path]
+return list of directories and files in [path] (perm:r)
+    > list
+    > list pc1://home
+---------------------------
+- notify [text]
+send and show a notify text to all nodes of kdfs (perm:s)
+    > notify "hello world!"
+---------------------------
+- stat [path]
+return info of file or directory in [path] (perm:r+)
+    > stat pc1://hello.md
+---------------------------
+- exist [path]
+return boolean for check exist path (perm:r)
+    > exist pc1://foo
+---------------------------
+- find [mode=name|content] [type=rec|file] [path] [regex]
+find by text (include simple regular expression) in filenames, direnames and contents and return list of find paths (perm:c)
+    > find name file "*://" "sam%-###.txt"
+    > find content all "pc1://home/" "hello world!"
+---------------------------
+- nodes add [name?] [ip?]
+scan all undefined nodes on local network and user can select one to add in nodes database (perm:s)
+    > nodes add
+    > nodes add pc4 "192.168.1.6"
+---------------------------
+- copy [src_path] [dest_path]
+copy a file or directory from a source path to a(all) dest path with replacement by older existence files (perm:w)
+    > copy pc1://home/sam.txt pc2://home/sam2.txt
+    > copy pc1://sam.txt *://home
+    > copy pc1://home *://
+    

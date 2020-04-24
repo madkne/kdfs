@@ -1,9 +1,14 @@
 from libs.termcolor import cprint,colored
 
+
 import socket
+import sys
 import json
 import math
+import time
 import gzip
+import os
+import tarfile
 from datetime import datetime
 
 class KDFSProtocol:
@@ -11,6 +16,8 @@ class KDFSProtocol:
     END_MESSAGE = b'\r!END!\r--\n'
     ENCODING = 'UTF-8'
     MESSAGE_TYPE = 'JSON'
+    COMPRESS_LEVEL = 5
+
     # -------------------------------------------------
     @staticmethod
     def checkChunkSize(chunk_size : int):
@@ -20,7 +27,64 @@ class KDFSProtocol:
         return chunk_size
     # -------------------------------------------------
     @staticmethod
-    def receiveMessage(socketi : socket.socket,chunk_size : int,is_file=False,is_binary=False):
+    def fileCompress(file_path:str):
+        from server.ServerUtils import ServerUtils as utils
+        # get tmp path
+        tmp_path = utils.checkTmpDirectory()
+        # generate filename
+        filename = os.path.join(tmp_path,"tmp_{}.tar.gz".format(int(round(time.time() * 1000))))
+        # compress all files in tar.gz file
+        with tarfile.open(filename, 'w:gz') as kdfsTar:
+             kdfsTar.add(file_path,arcname=os.path.basename(file_path))
+        # open and read compressed file
+        filecontent = b''
+        with open(filename, mode='rb') as f:
+            filecontent = f.read()
+
+        return filecontent
+    # -------------------------------------------------
+    @staticmethod
+    def directoryCompress(dir_path:str):
+        from server.ServerUtils import ServerUtils as sutils
+        from commands.minimalUitls import minimalUitls as mutils
+        # get tmp path
+        tmp_path = sutils.checkTmpDirectory()
+        # generate filename
+        filename = os.path.join(tmp_path,"tmp_{}.tar.gz".format(int(round(time.time() * 1000))))
+        # get all files and dirs
+        files = mutils.getAllFilesList(dir_path,True)
+        # print('files to compress:',files)
+        parent_dir = os.path.basename(dir_path)
+        # compress all files in tar.gz file
+        with tarfile.open(filename, 'w:gz') as kdfsTar:
+            for f in files:
+                kdfsTar.add(os.path.join(dir_path,f),arcname=os.path.join(parent_dir,f))
+        # open and read compressed file
+        filecontent = b''
+        with open(filename, mode='rb') as f:
+            filecontent = f.read()
+
+        return filecontent
+    # -------------------------------------------------
+    @staticmethod
+    def multipleFilesCompress(file_paths:list):
+        pass
+    # -------------------------------------------------
+    @staticmethod
+    def saveTempCompressedFile(file_content):
+        from server.ServerUtils import ServerUtils as utils
+        # get tmp path
+        tmp_path = utils.checkTmpDirectory()
+        # generate filename
+        filename = os.path.join(tmp_path,"tmp_{}.tar.gz".format(int(round(time.time() * 1000))))
+        # save file in tmp folder
+        with open(filename, mode='wb') as f:
+            f.write(bytearray(file_content))
+        # return file name of saved file
+        return filename
+    # -------------------------------------------------
+    @staticmethod
+    def receiveMessage(socketi : socket.socket,chunk_size : int,is_file=False):
         # check for socket not valid
         if socketi == None: return
         message = None
@@ -68,11 +132,12 @@ class KDFSProtocol:
                     break
             except Exception as e:
                 KDFSProtocol.echo("raise an exception when receiving message",'protocol',e)
+                # raise
                 break
 
             # if counter > 30: break
         
-        # KDFSProtocol.echo('(protocol) data resv:',data)
+        # KDFSProtocol.echo('data resv:{},is_file:{}'.format(data,is_file),'debug')
         # return empty, if data is empty
         if len(data) == 0:
             return None
@@ -82,24 +147,23 @@ class KDFSProtocol:
             if type(message) is str:
                 message = json.loads(message)
         else:
-            if is_binary:
+            try:
+                message = gzip.decompress(data)
+            except:
                 message = data
-            else:    
-                #=>decompress content
-                message = gzip.decompress(data).decode(KDFSProtocol.ENCODING)
         
 
         return message
     # -------------------------------------------------
     @staticmethod
-    def sendCommandFormatter(command : str,params:dict={},send_queen=False,send_file=False,send_binary=False,send_once=True) -> str:
+    def sendCommandFormatter(command : str,params:dict={},send_queen=False,send_file=False,max_send_packets=1,recv_file=False) -> str:
         message : dict = {
             'command'   : command,
             'params'    : params,
             'send_by'   : 'queen' if send_queen else 'client',
             'send_file' : send_file,
-            'send_binary': send_binary,
-            'send_once' : send_once
+            'receive_file': recv_file,
+            'max_packets' : max_send_packets
         }
 
         return json.dumps(message)
@@ -122,21 +186,21 @@ class KDFSProtocol:
         return json.dumps(message)
     # -------------------------------------------------
     @staticmethod
-    def sendMessage(socketi : socket.socket,chunk_size : int,data,is_file=False,is_binary=False):
+    def sendMessage(socketi : socket.socket,chunk_size : int,data,send_file=False):
         # check for socket not valid
         if socketi == None: return
         # decode data by encoding, if not file!
-        if not is_file:
+        if not send_file or type(data) is str:
             data = data.encode(KDFSProtocol.ENCODING)
-        elif not is_binary:
+        else:
             #=> compress content by gzip
-            data = gzip.compress(bytes(data,KDFSProtocol.ENCODING))
+            data = gzip.compress(data,KDFSProtocol.COMPRESS_LEVEL)
         # check for chunk size
         chunk_size = KDFSProtocol.checkChunkSize(chunk_size)
         #=>calc data chunks count
         dataLen = len(data)
         dataChunks = math.ceil(dataLen / chunk_size)
-        # KDFSProtocol.echo("(protocol) Send Data chunks:{} ({} bytes)".format(dataChunks,dataLen))
+        # KDFSProtocol.echo("Send Data chunks:{} ({} bytes)".format(dataChunks,dataLen),'protocol')
         #=>send data chunks
         for i in range(0,dataChunks,1):
             try:
@@ -154,25 +218,35 @@ class KDFSProtocol:
     # -------------------------------------------------
     @staticmethod
     def echo(msg:str,frm:str='KDFS',err='',end='\n',is_err=False):
-        currentDatetime = datetime.now().strftime("%Y.%m.%d %H:%M:%S")
+        currentDatetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         if type(frm) is str: frm = frm.upper()
         else: frm = str(frm)
+        log = ''
+        log_mode = 'INFO'
+        log_msg = msg
 
         if type(err) is not str: err = str(err)
 
         if err == '' and not is_err:
             print("{} [{}]\t{}".format(
-                colored(f"(INFO:{frm[0:6]: ^6})",'blue',attrs=['bold']),
+                colored(f"(INFO:{frm[0:7]: ^7})",'blue',attrs=['bold']),
                 currentDatetime,
                 msg
-                ),end=end)
+                ),end=end,file=sys.stdout)
         else:
             # append error message to msg, if exist
+            logo_mode = 'ERROR'
             if err != '' and err != None:
                 msg = "{} ({})".format(msg,colored(err,'red'))
+                log_msg = "{} ({})".format(msg,err)
 
             print("{} [{}]\t{}".format(
-                colored(f"(ERR :{frm[0:6]: ^6})",'red',attrs=['bold']),
+                colored(f"(ERR :{frm[0:7]: ^7})",'red',attrs=['bold']),
                 currentDatetime,
                 msg
-            ))
+            ),file=sys.stderr)
+        # log system
+        from server.ServerUtils import ServerUtils as utils
+        # append new log to logs file
+        with open(utils.LOGS_PATH,'a') as f:
+            f.write("{} {} [{}] {}\n".format(currentDatetime,log_mode,f"{frm[0:10]: ^10}",msg))

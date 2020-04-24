@@ -59,20 +59,26 @@ KDFS is a cross platform, but not tested in windows or macos!!!
         > nodes show pc3
   - [ ] nodes change [name] [property] [value] : if node exist, then change and update its property by new value
 
+- [x] copy [src_path] [dest_path] : copy a file or directory from a source path to a(all) dest path with replacement by older existence files (perm:w)
 
-- [ ] move [mode=file|dir] [src_path] [dest_path] : move a file or directory from a source path to a dest path (perm:w+)
-  
-- [ ] delete [mode=file|dir] [path] : delete a file or directory by path (perm:w+)
-  
-- [ ] copy [mode=file|dir] [src_path] [dest_path] : copy a file or directory from a source path to a(all) dest path (perm:w)
+        > copy pc1://home/sam.txt pc2://home/sam2.txt
+        > copy pc1://sam.txt *://home
+        > copy pc1://home *://
 
-        > copy file pc1://home/sam.txt pc2://home/sam2.txt
-        > copy file pc1://sam.txt *://home
+- [ ] move [src_path] [dest_path] : move a file or directory from a source path to a dest path (perm:w+)
+  
+- [ ] delete [path] : delete a file or directory by path (perm:w+)
+  
 
 - [ ] create [mode=file|dir] [path] : create a file or directory in a(all) path and if parent not exist create them! (perm:w)
 
         > create file *://home/sam.txt
         > create dir pc1://home
+
+- [ ] rename [path] [newname] : rename name of file or directory in a(all) path (perm:w)
+
+        > rename "pc1://fg.md" "cv.md"
+        > rename "*://home" "homei"
   
 - [ ] info [mode=storage] : display current nodestorage info (perm:b)
   

@@ -2,6 +2,7 @@
 from server.KDFSProtocol import KDFSProtocol
 from server.ServerUtils import ServerUtils
 from libs.Config import Config
+from commands.base import baseCommand
 
 import json
 import os
@@ -98,6 +99,7 @@ class KDFSQueen:
                 "server/ServerUtils.py",
                 "server/ClientThread.py",
                 "kdfs.py",
+                "KDFSHelp",
                 "kdfs.conf.sample",
                 "server.py",
                 "libs/__init__.py",
@@ -109,51 +111,35 @@ class KDFSQueen:
                 "commands/__init__.py",
                 "commands/minimal.py",
                 "commands/minimalUitls.py",
-                "upgrade.sh"
             ]
+            # if os is linux, then run bash script
+            if ServerUtils.detectOS() == 'linux':
+                files.append("upgrade.sh")
+                files.append("kdfs_server.sh")
+            # TODO:
+            # compress all files in tar.gz file
             with tarfile.open(zip_path, 'w:gz') as kdfsTar:
                 for f in files:   
                     kdfsTar.add(f)
 
         # connect to node and send upgrade file for it
-        socketi = ServerUtils.socketConnect(ip,self.GLOBAL_PORT,self.GLOBAL_CONFIG.getInteger('max_timeout',60))
         try:
-            # send upgrade command
-            KDFSProtocol.sendMessage(socketi,self.GLOBAL_CHUNK_SIZE,KDFSProtocol.sendCommandFormatter('upgrade',{'version':version},True,True,True,send_once=False))
-            # get response of command, if exist!
-            response = KDFSProtocol.receiveMessage(socketi,self.GLOBAL_CHUNK_SIZE)['data']
-            # if response not 'yes', then failed upgrading!
-            if response != 'yes':
-                KDFSProtocol.echo("Failed upgrading by node server",'queen',response)
-                return False
-            # KDFSProtocol.echo('(debug) node upgrade:',response,len(response))
             # read new kdfs zip file
             filecontent = b''
             with open(zip_path, mode='rb') as f:
                 filecontent = f.read()
-            # send new kdfs zip file to node 
-            # KDFSProtocol.echo("(debug) filcontent:",filecontent)
-            KDFSProtocol.sendMessage(socketi,self.GLOBAL_CHUNK_SIZE,filecontent,True,True)
-            # get response for success upgrading or failed!
-            response = KDFSProtocol.receiveMessage(socketi,self.GLOBAL_CHUNK_SIZE)['data']
-
+            base = baseCommand(ip,'upgrade',[])
+            (response,err) = base._broadcastFile([ip],'upgrade',{'version':version},filecontent)
             if response == 'success':
                 KDFSProtocol.echo("Success upgrading of \"{}\" node server! Reconnect later (about 3 sec later)".format(name),'queen')
             else:
-                KDFSProtocol.echo("Seems that Failed upgrading of \"{}\" node server".format(name,),'queen',response)
+                KDFSProtocol.echo("Seems that Failed upgrading of \"{}\" node server".format(name),'queen',err=err)
 
-            # close connection
-            socketi.close()
-
-
+            return True
         except (Exception,KeyboardInterrupt) as e:
             KDFSProtocol.echo("Failed upgrading by Exception",'queen',e)
             return False
             # raise
-        finally:
-            # close socket 
-            if socketi is not None:
-                socketi.close()
 
 
     

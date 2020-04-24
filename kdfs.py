@@ -17,36 +17,32 @@ import platform
 # ------------------------------------------------
 KDFSConfig : Config
 # ------------------------------------------------
+def raiseError(err,isClientError=False):
+    if isClientError:
+        cprint('\r>> [ERR] '+err,'red',attrs=['bold'],file=sys.stderr)
+    else:    
+        cprint(err,'red',attrs=['bold'],file=sys.stderr)
+# ------------------------------------------------
 def help():
     print("Welcome to Kimia Kimia Distributed File System {}!  This is the help utility.".format(KDFSConfig.get('version','unknown')))
-    print("\
-        \nlist [path]\
-        \nreturn list of directories and files in [path] (perm:r)\
-        \n\t> list\
-        \n\t> list pc1://home\
-        \n---------------------------\
-        \n- notify [text]\
-        \nsend and show a notify text to all nodes of kdfs (perm:s)\
-        \n\t> notify \"hello world!\"\
-        \n---------------------------\
-        \n- stat [path]\
-        \nreturn info of file or directory in [path] (perm:r+)\
-        \n\t> stat pc1://hello.md\
-        \n---------------------------\
-        \n- exist [path]\
-        \nreturn boolean for check exist path (perm:r)\
-        \n\t> exist pc1://foo\
-        \n---------------------------\
-        \n- find [mode=name|content] [type=rec|file] [path] [regex]\
-        \nfind by text (include simple regular expression) in filenames, direnames and contents and return list of find paths (perm:c)\
-        \n\t> find name file \"*://\" \"sam%-###.txt\"\
-        \n\t> find content all \"pc1://home/\" \"hello world!\"\
-        \n---------------------------\
-        \n- nodes add [name?] [ip?]\
-        \nscan all undefined nodes on local network and user can select one to add in nodes database (perm:s)\
-        \n\t> nodes add\
-        \n\t> nodes add pc4 \"192.168.1.6\" \
-        \n")
+    # if exist help file
+    if os.path.exists('./KDFSHelp'):
+        with open('./KDFSHelp','r') as f:
+            print()
+            helpText = f.readlines()
+            for line in helpText:
+                line = line.strip()
+                if len(line) == 0: continue
+                if line[0] == '-':
+                    cprint(line,'cyan')
+                elif line.startswith('>'):
+                    cprint('\t'+line,'white',attrs=['bold'])
+                else:
+                    print(line)
+            print()
+    # if not exist help file
+    else:
+        raiseError("Not Found Help Document of KDFS Client!",False)
 # ------------------------------------------------
 def displayResponseAsTable(response: list):
     itemsList = []
@@ -120,11 +116,11 @@ if __name__ == "__main__":
             print("\r({}) >> [{} sec] {} {}\n\n".format(platform.node(),(endTime-startTime)/1000, command,' '.join(params)))
             # check for errors
             if response is None or response['data'] is None:
-                cprint(">> [ERR] Can not retrive response from server!",'red',attrs=['bold'])
+                raiseError("Can not retrive response from server!",True)
                 exit(1)
             if len(response['errors']) > 0:
                 for err in response['errors']:
-                    cprint(">> [ERR] {}".format(err),'red',attrs=['bold'])
+                    raiseError(err,True)
                 exit(1)
             # get response type from meta
             responseType = response['meta']['type']
@@ -142,7 +138,7 @@ if __name__ == "__main__":
         except KeyboardInterrupt:
             exit(0)
         except Exception as e:
-            cprint("can not connect to local kdfs server or retrive response :{}".format(e),'red',attrs=['bold'])
+            raiseError("can not connect to local kdfs server or retrive response :{}".format(e),False)
             raise
             # print("raise an exception:",e)
             exit(1)

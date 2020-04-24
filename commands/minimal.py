@@ -174,7 +174,7 @@ class MinimalCommands:
                 self.config.updateItem('version',params['version'])
                 KDFSProtocol.echo("saved kdfs version {} upgraded file in local".format(params['version']),'upgrade')
                 # if os is linux, then run bash script
-                if platform.system() == 'Linux':
+                if ServerUtils.detectOS() == 'linux':
                     os.system("sh ./upgrade.sh &")
                 else:
                     pass
@@ -191,3 +191,41 @@ class MinimalCommands:
             return ('success','')
         else:
             return ('failed','')
+    # ------------------------------------------------
+    def copyCommand(self,params:dict):
+        # create absolute path with storage path
+        absPath = self._getAbsPath(params['path'])
+        # print('abspath:',absPath)
+        # if type of copy is 'src'
+        if params['mode'] == 'src':
+            # check for exist directory or file
+            if not os.path.exists(absPath):
+                return ('',"no such file or directory to retrive")
+            # if path is for file
+            if os.path.isfile(absPath):
+                content = KDFSProtocol.fileCompress(absPath)
+                return (content,'')
+            # if path is for directory
+            elif os.path.isdir(absPath):
+                content = KDFSProtocol.directoryCompress(absPath)
+                return (content,'')
+            else:
+                return ('',"undefined path")
+
+        # if type of copy is 'dest'
+        elif params['mode'] == 'dest':
+            if params['packnumber'] == 1:
+                # check for exist parent directory of dest path
+                if not os.path.exists(os.path.dirname(absPath)):
+                    return ('',"no such parent directory to retrive")
+                return ('success','')
+            else:
+
+                # print("data file (copy):",params['data'])
+                # save to file
+                filename = KDFSProtocol.saveTempCompressedFile(params['data'])
+                # extract to min source
+                with tarfile.open(filename, 'r:gz') as kdfsTar:
+                    kdfsTar.extractall(absPath)
+                
+                return ('success','')

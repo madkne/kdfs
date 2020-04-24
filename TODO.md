@@ -28,7 +28,7 @@
 - [x] complete 'upgrade' command for servers
 - [x] complete 'notify' command for clients
 - [x] complete 'stat' command for clients
-- [ ] add logs system to servers
+- [x] add logs system to servers
 - [x] using colors for logs in terminal
 - [x] complete 'exist' command for clients
 - [x] create simple regex searcher
@@ -36,7 +36,8 @@
 - [x] add 'recessive' option to 'find' command
 - [x] complete 'nodes add' command for clients
 - [x] publish to github
-- [ ] complete 'copy' command for clients
+- [x] complete 'copy' command for clients
+- [ ] empty tmp directory in shutting down server
 - [ ] complete 'move' command for clients
 - [ ] complete 'delete' command for clients
 - [ ] complete 'config' command for clients

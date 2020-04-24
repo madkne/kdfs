@@ -1,0 +1,7 @@
+
+# ignore all python cache files
+*.pyc
+# ignore out/,storage/,upgrades/ directories
+out/*
+storage/*
+upgrades/*
